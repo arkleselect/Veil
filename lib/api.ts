@@ -26,6 +26,19 @@ export interface AuthSession {
   userAgent: string
 }
 
+export interface AiAssistantContextNote {
+  title: string
+  excerpt?: string
+  content?: string
+  notebook?: string
+}
+
+export interface AiAssistantResponse {
+  answer: string
+  source: "ai" | "local"
+  suggestions: string[]
+}
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null
   if (window.electronAPI?.runtime === "electron") return LOCAL_DESKTOP_TOKEN
@@ -150,6 +163,13 @@ export async function revokeAuthSession(id: string): Promise<void> {
 export async function revokeOtherAuthSessions(): Promise<{ revoked: number }> {
   return fetchJSON(`${BASE}/auth/sessions?scope=others`, {
     method: "DELETE",
+  })
+}
+
+export async function askAiAssistant(input: { message: string; context: AiAssistantContextNote[] }): Promise<AiAssistantResponse> {
+  return fetchJSON(`${BASE}/ai`, {
+    method: "POST",
+    body: JSON.stringify(input),
   })
 }
 

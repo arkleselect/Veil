@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react"
-import { ArrowLeft, ChevronDown, Info, MoreHorizontal, Share2, Star, Moon, Sun, UserRound } from "lucide-react"
+import { ArrowLeft, Bot, ChevronDown, ClipboardCopy, FileText, Info, Lightbulb, MoreHorizontal, Send, Share2, Sparkles, Star, Moon, Sun, UserRound } from "lucide-react"
 import { Sidebar } from "@/components/sidebar"
 import { NoteList } from "@/components/note-list"
 import { Editor } from "@/components/editor"
@@ -12,7 +12,7 @@ import { ConfirmDialog, PromptDialog } from "@/components/dialog"
 import { useToast } from "@/components/toast-provider"
 import { useTheme } from "@/components/theme-provider"
 import type { Note, Notebook, NotesPage, TagSummary, UpdateNoteInput, WorkspaceMode } from "@/lib/notes-data"
-import { ApiError, getNote, getNotesPage, getNotebooks, getFavorites, getTrashNotes, getTagSummaries, updateNote, createNote, reorderNotes, deleteNote, restoreNote, emptyTrash, createNotebook, updateNotebook, deleteNotebook, logout } from "@/lib/api"
+import { ApiError, askAiAssistant, getNote, getNotesPage, getNotebooks, getFavorites, getTrashNotes, getTagSummaries, updateNote, createNote, reorderNotes, deleteNote, restoreNote, emptyTrash, createNotebook, updateNotebook, deleteNotebook, logout, type AiAssistantContextNote } from "@/lib/api"
 import { notebookShareUrl, shareOrCopyLink } from "@/lib/share"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +20,7 @@ const NOTES_PAGE_LIMIT = 50
 const DEFAULT_DOCUMENT_TITLE = "我的笔记 · Notes"
 const SIDEBAR_OPEN_STORAGE_KEY = "veil-sidebar-open"
 const NOTE_LIST_OPEN_STORAGE_KEY = "veil-note-list-open"
+const ACTIVE_NAV_STORAGE_KEY = "veil-active-nav"
 const FAVORITE_NOTEBOOKS_STORAGE_KEY = "veil-favorite-notebook-ids"
 
 function localRepositoryAvailable(): boolean {
@@ -36,6 +37,27 @@ function storedBoolean(key: string, fallback: boolean): boolean {
     return fallback
   }
   return fallback
+}
+
+function storedActiveNav(): string {
+  if (typeof window === "undefined") return "all"
+  try {
+    const value = window.localStorage.getItem(ACTIVE_NAV_STORAGE_KEY)
+    return value && isValidStoredNav(value) ? value : "all"
+  } catch {
+    return "all"
+  }
+}
+
+function isValidStoredNav(value: string): boolean {
+  return ["all", "search", "today", "ai", "tags", "templates", "trash", "settings"].includes(value) ||
+    value.startsWith("nb-") ||
+    value.startsWith("tag-")
+}
+
+function viewFromNav(value: string): string | null {
+  if (value === "ai" || value === "tags" || value === "templates" || value === "trash" || value === "settings") return value
+  return null
 }
 
 function storedStringArray(key: string): string[] {
@@ -62,7 +84,7 @@ interface NotesQuery {
 }
 
 function shouldShowNoteList(activeNav: string): boolean {
-  return !["tags", "trash", "templates", "settings"].includes(activeNav)
+  return !["ai", "tags", "trash", "templates", "settings"].includes(activeNav)
 }
 
 function notesQueryFromNav(activeNav: string, searchQuery: string): NotesQuery {
@@ -196,6 +218,58 @@ function plainTextLength(note: Note): number {
   return note.title.length + note.blocks.reduce((total, block) => total + block.text.replace(/<[^>]*>/g, "").length, 0)
 }
 
+function stripBlockHtml(value: string): string {
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|pre)>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
+function assistantBlockText(note: Note): string {
+  return note.blocks
+    .map((block, index) => {
+      const text = stripBlockHtml(block.text)
+      if (!text) return ""
+      if (block.type === "todo") return `${block.checked ? "[x]" : "[ ]"} ${text}`
+      if (block.type === "bullet") return `- ${text}`
+      if (block.type === "ordered") return `${index + 1}. ${text}`
+      if (block.type === "quote") return `> ${text}`
+      if (block.type === "code") return `代码:\n${text}`
+      return text
+    })
+    .filter(Boolean)
+    .join("\n")
+}
+
+function noteToAssistantContext(note: Note): AiAssistantContextNote {
+  const content = assistantBlockText(note)
+  return {
+    title: note.title.trim() || "未命名笔记",
+    excerpt: note.excerpt?.trim() || undefined,
+    content: content ? content.slice(0, 12_000) : undefined,
+    notebook: note.notebook || undefined,
+  }
+}
+
+function assistantContextNotes(selectedNote: Note | null, notes: Note[]): Note[] {
+  const seen = new Set<string>()
+  const ordered = selectedNote ? [selectedNote, ...notes] : notes
+  return ordered.filter((note) => {
+    if (note.deletedAt || seen.has(note.id)) return false
+    seen.add(note.id)
+    return true
+  }).slice(0, 8)
+}
+
 function formatHomeDate(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
@@ -272,7 +346,7 @@ function SidebarLayout({ sidebarOpen, sidebarWidth, mode, activeNav, handleNavCh
 export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
   const { toast } = useToast()
   const { theme, setTheme } = useTheme()
-  const [activeNav, setActiveNav] = useState("all")
+  const [activeNav, setActiveNav] = useState(() => storedActiveNav())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [titleNoteId, setTitleNoteId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(() => storedBoolean(SIDEBAR_OPEN_STORAGE_KEY, true))
@@ -288,7 +362,7 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
   const [favorites, setFavorites] = useState<Note[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
-  const [currentView, setCurrentView] = useState<string | null>(null)
+  const [currentView, setCurrentView] = useState<string | null>(() => viewFromNav(storedActiveNav()))
   const [trashNotes, setTrashNotes] = useState<Note[]>([])
   const [tagSummaries, setTagSummaries] = useState<TagSummary[]>([])
   const [emptyTrashOpen, setEmptyTrashOpen] = useState(false)
@@ -326,6 +400,15 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
   }, [activeNav, notebooks])
 
   useEffect(() => {
+    if (!activeNav.startsWith("nb-") || notebooks.length === 0) return
+    if (notebooks.some((item) => item.id === activeNav.slice(3))) return
+    setActiveNav("all")
+    setCurrentView(null)
+    setSelectedId(null)
+    setTitleNoteId(null)
+  }, [activeNav, notebooks])
+
+  useEffect(() => {
     document.title = titleNote?.title ?? (activeNav.startsWith("nb-") ? activeNotebookName : DEFAULT_DOCUMENT_TITLE)
     return () => {
       document.title = DEFAULT_DOCUMENT_TITLE
@@ -351,6 +434,14 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
       // Ignore storage failures, for example private browsing restrictions.
     }
   }, [noteListOpen])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ACTIVE_NAV_STORAGE_KEY, activeNav)
+    } catch {
+      // Ignore storage failures, for example private browsing restrictions.
+    }
+  }, [activeNav])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), 300)
@@ -391,7 +482,13 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
       setNoteIds(notesPage.items.map((note) => note.id))
       setNotesCursor(notesPage.nextCursor)
       setNotesHasMore(notesPage.hasMore)
-      setSelectedId((current) => current ?? notesPage.items[0]?.id ?? favoritesData[0]?.id ?? null)
+      const pageIds = new Set(notesPage.items.map((note) => note.id))
+      setSelectedId((current) => {
+        if (!shouldShowNoteList(activeNav)) return current
+        if (current && pageIds.has(current)) return current
+        return notesPage.items[0]?.id ?? null
+      })
+      setTitleNoteId((current) => (current && pageIds.has(current) ? current : null))
     } catch {
       toast("加载数据失败", "error")
     } finally {
@@ -483,9 +580,14 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
     }
     setTitleNoteId(null)
     if (id === "tags" || id === "trash" || id === "templates") {
+      setSelectedId(null)
       setCurrentView(id)
       setActiveNav(id)
+    } else if (id === "ai") {
+      setCurrentView("ai")
+      setActiveNav(id)
     } else {
+      setSelectedId(null)
       setActiveNav(id)
       setCurrentView(null)
     }
@@ -1101,6 +1203,17 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
     )
   }
 
+  if (currentView === "ai" || activeNav === "ai") {
+    return layout(
+      <AIAssistant
+        selectedNote={selectedNote}
+        notes={displayNotes.length ? displayNotes : notes}
+        activeNotebookName={activeNotebookName}
+        onSelectNote={handleSelectNote}
+      />,
+    )
+  }
+
   return layout(
     <>
       {noteListOpen && (
@@ -1151,6 +1264,247 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
         />
       )}
     </>
+  )
+}
+
+function AIAssistant({
+  selectedNote,
+  notes,
+  activeNotebookName,
+  onSelectNote,
+}: {
+  selectedNote: Note | null
+  notes: Note[]
+  activeNotebookName: string
+  onSelectNote: (id: string) => void
+}) {
+  const { toast } = useToast()
+  const [prompt, setPrompt] = useState("")
+  const [answer, setAnswer] = useState("")
+  const [suggestions, setSuggestions] = useState<string[]>(["总结当前内容", "提炼待办事项", "生成复习提纲"])
+  const [source, setSource] = useState<"ai" | "local" | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const contextNotes = useMemo(() => assistantContextNotes(selectedNote, notes), [selectedNote, notes])
+  const contextPayload = useMemo(() => contextNotes.map(noteToAssistantContext), [contextNotes])
+  const contextTitle = selectedNote?.title || activeNotebookName
+  const quickActions = useMemo(() => [
+    {
+      label: "总结当前内容",
+      icon: Sparkles,
+      prompt: selectedNote ? "请总结当前笔记，列出核心观点和遗漏风险。" : `请总结「${activeNotebookName}」里的笔记重点。`,
+    },
+    {
+      label: "提炼待办事项",
+      icon: Lightbulb,
+      prompt: "请从这些笔记中提炼可执行的待办事项，并按优先级排列。",
+    },
+    {
+      label: "生成复习提纲",
+      icon: FileText,
+      prompt: "请把这些笔记整理成一份清晰的复习提纲。",
+    },
+  ], [activeNotebookName, selectedNote])
+
+  const submitAssistant = useCallback(async (messageOverride?: string) => {
+    const message = (messageOverride ?? prompt).trim()
+    if (!message || loading) return
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await askAiAssistant({ message, context: contextPayload })
+      setAnswer(result.answer)
+      setSource(result.source)
+      setSuggestions(result.suggestions)
+      if (!messageOverride) setPrompt("")
+    } catch {
+      setError("AI 助手暂时不可用，请稍后再试。")
+    } finally {
+      setLoading(false)
+    }
+  }, [contextPayload, loading, prompt])
+
+  const copyAnswer = useCallback(async () => {
+    if (!answer) return
+    try {
+      await navigator.clipboard.writeText(answer)
+      toast("已复制", "success")
+    } catch {
+      toast("复制失败", "error")
+    }
+  }, [answer, toast])
+
+  return (
+    <section className="flex min-w-0 flex-1 overflow-hidden bg-[#f6f7f8] text-foreground dark:bg-background">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <main className="flex min-w-0 flex-col overflow-hidden border-r border-border bg-background/95">
+          <div className="flex min-h-[72px] items-center justify-between gap-4 border-b border-border px-6 py-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f2ff] text-[#2563eb] dark:bg-[#17345f] dark:text-[#9bc7ff]">
+                  <Bot className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h1 className="truncate text-[18px] font-semibold leading-6">AI 助手</h1>
+                  <p className="truncate text-xs text-muted-foreground">{contextTitle}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-[6px] border border-border px-2 py-1">{contextPayload.length} 篇上下文</span>
+              {source && (
+                <span className={cn(
+                  "rounded-[6px] border px-2 py-1",
+                  source === "ai"
+                    ? "border-[#b7d5ff] bg-[#eef6ff] text-[#1d4ed8] dark:border-[#244b80] dark:bg-[#102744] dark:text-[#9bc7ff]"
+                    : "border-[#d7dce2] bg-muted text-muted-foreground",
+                )}>
+                  {source === "ai" ? "AI 生成" : "本地整理"}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {quickActions.map((action) => {
+                const Icon = action.icon
+                return (
+                  <button
+                    key={action.label}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => { void submitAssistant(action.prompt) }}
+                    className="flex min-h-[76px] items-start gap-3 rounded-[8px] border border-border bg-card px-4 py-3 text-left transition-colors hover:border-[#9bc7ed] hover:bg-[#f8fbff] disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-[#10243a]"
+                  >
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[#2563eb] dark:text-[#9bc7ff]" />
+                    <span className="text-sm font-medium leading-5">{action.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-5 rounded-[8px] border border-border bg-card">
+              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Sparkles className="h-4 w-4 shrink-0 text-[#2563eb] dark:text-[#9bc7ff]" />
+                  <span className="truncate text-sm font-medium">回答</span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="复制回答"
+                  title="复制回答"
+                  disabled={!answer}
+                  onClick={() => { void copyAnswer() }}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ClipboardCopy className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="min-h-[280px] px-5 py-5">
+                {loading ? (
+                  <div className="flex h-full min-h-[220px] items-center justify-center text-sm text-muted-foreground">
+                    正在整理...
+                  </div>
+                ) : answer ? (
+                  <pre className="whitespace-pre-wrap break-words font-sans text-[14px] leading-7 text-foreground">{answer}</pre>
+                ) : (
+                  <div className="flex min-h-[220px] flex-col justify-center gap-3 text-sm text-muted-foreground">
+                    <p>可以直接提问，也可以从上方选择一个动作。</p>
+                    {contextPayload.length === 0 && <p>当前没有可用笔记上下文。</p>}
+                  </div>
+                )}
+                {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+                {answer && suggestions.length > 0 && (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {suggestions.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => { void submitAssistant(item) }}
+                        className="rounded-[6px] border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <form
+            className="border-t border-border bg-background px-5 py-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void submitAssistant()
+            }}
+          >
+            <div className="flex items-end gap-3 rounded-[8px] border border-border bg-card p-2 focus-within:border-[#8bbcf0]">
+              <textarea
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                onKeyDown={(event) => {
+                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                    event.preventDefault()
+                    void submitAssistant()
+                  }
+                }}
+                placeholder="向 AI 助手提问..."
+                rows={2}
+                className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-6 outline-none placeholder:text-muted-foreground"
+              />
+              <button
+                type="submit"
+                aria-label="发送"
+                title="发送"
+                disabled={loading || !prompt.trim()}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[#2563eb] text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </form>
+        </main>
+
+        <aside className="min-h-0 overflow-y-auto bg-[#fbfbfa] px-5 py-5 dark:bg-card/70">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-semibold">上下文</h2>
+              <p className="truncate text-xs text-muted-foreground">{activeNotebookName}</p>
+            </div>
+            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </div>
+
+          <div className="space-y-2">
+            {contextNotes.length === 0 ? (
+              <div className="rounded-[8px] border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
+                暂无可用笔记。
+              </div>
+            ) : contextNotes.map((note) => (
+              <button
+                key={note.id}
+                type="button"
+                onClick={() => onSelectNote(note.id)}
+                className={cn(
+                  "w-full rounded-[8px] border border-border bg-background px-3 py-3 text-left transition-colors hover:border-[#9bc7ed] hover:bg-[#f8fbff] dark:hover:bg-[#10243a]",
+                  selectedNote?.id === note.id && "border-[#9bc7ed] bg-[#eef6ff] dark:border-[#244b80] dark:bg-[#102744]",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0 truncate text-sm font-medium">{note.title || "未命名笔记"}</span>
+                  <span className="shrink-0 rounded-[6px] bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{note.notebook}</span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                  {note.excerpt || stripBlockHtml(note.blocks[0]?.text ?? "") || "空笔记"}
+                </p>
+              </button>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </section>
   )
 }
 
