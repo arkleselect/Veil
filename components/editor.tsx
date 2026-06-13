@@ -562,8 +562,16 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
         : current.map(() => makeBlockKey())
       const next = [...current]
       const nextKeys = [...currentKeys]
-      next.splice(firstIndex, 0, { type: "toggle", text: "", collapsed: false })
-      nextKeys.splice(firstIndex, 0, makeBlockKey())
+      const toggleId = makeToggleId()
+      next[firstIndex] = toToggleBlock(current[firstIndex], toggleId)
+      if (normalizedIndexes.length === 1) {
+        next.splice(firstIndex + 1, 0, { type: "paragraph", text: "", toggleParentId: toggleId })
+        nextKeys.splice(firstIndex + 1, 0, makeBlockKey())
+      } else {
+        normalizedIndexes.slice(1).forEach((index) => {
+          next[index] = { ...next[index], toggleParentId: toggleId }
+        })
+      }
       commitBlocks(note.id, next)
       applyBlockKeys(nextKeys)
       clearBlockSelection()
@@ -580,18 +588,18 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     const next = current.map((block, index) => {
       if (!indexSet.has(index)) return block
       if (type === "heading") {
-        const { checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, ...rest } = block
+        const { checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = block
         return { ...rest, type, level: level ?? 1 }
       }
       if (type === "todo") {
-        const { level: _level, collapsed: _collapsed, showLineNumbers: _showLineNumbers, ...rest } = block
+        const { level: _level, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = block
         return { ...rest, type, checked: block.checked ?? false }
       }
       if (type === "code") {
-        const { level: _level, checked: _checked, collapsed: _collapsed, ...rest } = block
+        const { level: _level, checked: _checked, collapsed: _collapsed, toggleId: _toggleId, ...rest } = block
         return { ...rest, type, showLineNumbers: block.showLineNumbers ?? false }
       }
-      const { level: _level, checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, ...rest } = block
+      const { level: _level, checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = block
       return { ...rest, type }
     })
     commitBlocks(note.id, next)
@@ -887,14 +895,25 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
         ? [...blockKeys]
         : current.map(() => makeBlockKey())
       let focusIndex = index + 1
+      const block = current[index]
+      const parentId = block.toggleParentId
 
-      if (split.atStart) {
-        next[index] = { type: "paragraph", text: "" }
+      if (block.type === "toggle") {
+        next[index] = block.toggleId
+          ? toToggleBlock({ ...block, text: split.beforeHtml }, block.toggleId)
+          : { ...block, text: split.beforeHtml }
+        next.splice(index + 1, 0, {
+          type: "paragraph",
+          text: split.afterHtml,
+          ...(block.toggleId ? { toggleParentId: block.toggleId } : {}),
+        })
+      } else if (split.atStart) {
+        next[index] = { type: "paragraph", text: "", ...(parentId ? { toggleParentId: parentId } : {}) }
         next.splice(index + 1, 0, { ...current[index], text: split.afterHtml })
         focusIndex = index
       } else {
         next[index] = { ...next[index], text: split.beforeHtml }
-        next.splice(index + 1, 0, { type: "paragraph", text: split.afterHtml })
+        next.splice(index + 1, 0, { type: "paragraph", text: split.afterHtml, ...(parentId ? { toggleParentId: parentId } : {}) })
       }
 
       nextKeys.splice(index + 1, 0, makeBlockKey())
@@ -1061,22 +1080,21 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     const next = current.map((b, i) => {
       if (i !== index) return b
       if (type === "heading") {
-        const { checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, ...rest } = b
+        const { checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = b
         return { ...rest, type, level: 1 as HeadingLevel }
       }
       if (type === "todo") {
-        const { level: _level, collapsed: _collapsed, showLineNumbers: _showLineNumbers, ...rest } = b
+        const { level: _level, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = b
         return { ...rest, type, checked: b.checked ?? false }
       }
       if (type === "code") {
-        const { level: _level, checked: _checked, collapsed: _collapsed, ...rest } = b
+        const { level: _level, checked: _checked, collapsed: _collapsed, toggleId: _toggleId, ...rest } = b
         return { ...rest, type, showLineNumbers: b.showLineNumbers ?? false }
       }
       if (type === "toggle") {
-        const { level: _level, checked: _checked, showLineNumbers: _showLineNumbers, ...rest } = b
-        return { ...rest, type, collapsed: b.collapsed ?? false }
+        return toToggleBlock(b, b.toggleId ?? makeToggleId())
       }
-      const { level: _level, checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, ...rest } = b
+      const { level: _level, checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = b
       return { ...rest, type }
     })
     commitBlocks(note.id, next)
@@ -1120,6 +1138,12 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       : current.map(() => makeBlockKey())
     const activeIndex = activeBlockRef.current
     const insertIndex = activeIndex === null ? current.length : activeIndex + 1
+    const activeBlock = activeIndex === null ? null : current[activeIndex]
+    let inheritedToggleParentId = activeBlock?.toggleParentId
+    if (activeIndex !== null && activeBlock?.type === "toggle" && activeBlock.toggleId) {
+      inheritedToggleParentId = activeBlock.toggleId
+      current[activeIndex] = toToggleBlock(activeBlock, inheritedToggleParentId)
+    }
     const replaceEmptyActiveBlock =
       activeIndex !== null &&
       current[activeIndex]?.type === "paragraph" &&
@@ -1127,7 +1151,10 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       isEmptyHtml(current[activeIndex].text)
 
     const targetIndex = replaceEmptyActiveBlock ? activeIndex : insertIndex
-    const blocksToInsert = nextBlocks.map((block) => ({ ...block }))
+    const blocksToInsert = nextBlocks.map((block) => ({
+      ...block,
+      ...(inheritedToggleParentId ? { toggleParentId: inheritedToggleParentId } : {}),
+    }))
     const keysToInsert = blocksToInsert.map(() => makeBlockKey())
 
     if (replaceEmptyActiveBlock) {
@@ -2927,24 +2954,49 @@ function getVisibleTocHeadings(headings: TocHeading[], collapsedIds: Set<number>
   return visible
 }
 
+function makeToggleId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return `toggle-${crypto.randomUUID()}`
+  return `toggle-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
+function toToggleBlock(block: NoteBlock, toggleId: string): NoteBlock {
+  const {
+    checked: _checked,
+    level: _level,
+    showLineNumbers: _showLineNumbers,
+    toggleParentId: _toggleParentId,
+    ...rest
+  } = block
+  return { ...rest, type: "toggle", collapsed: block.collapsed ?? false, toggleId }
+}
+
+function getToggleChildEnd(blocks: NoteBlock[], toggleIndex: number): number {
+  const toggle = blocks[toggleIndex]
+  if (toggle?.type !== "toggle") return toggleIndex + 1
+
+  if (toggle.toggleId) {
+    let end = toggleIndex + 1
+    while (end < blocks.length && blocks[end].toggleParentId === toggle.toggleId) {
+      end += 1
+    }
+    return end
+  }
+
+  let end = toggleIndex + 1
+  while (end < blocks.length && blocks[end].type !== "toggle") {
+    end += 1
+  }
+  return end
+}
+
 function getCollapsedBlockIndexes(blocks: NoteBlock[]): Set<number> {
   const hidden = new Set<number>()
-  let hiding = false
 
   for (let i = 0; i < blocks.length; i += 1) {
     const block = blocks[i]
-
-    if (hiding && block.type === "toggle") {
-      hiding = false
-    }
-
-    if (hiding) {
-      hidden.add(i)
-    }
-
-    if (block.type === "toggle" && block.collapsed) {
-      hiding = true
-    }
+    if (block.type !== "toggle" || !block.collapsed) continue
+    const end = getToggleChildEnd(blocks, i)
+    for (let childIndex = i + 1; childIndex < end; childIndex += 1) hidden.add(childIndex)
   }
 
   return hidden
@@ -2958,49 +3010,30 @@ interface ToggleChildLayout {
 
 function getToggleChildLayouts(blocks: NoteBlock[]): Map<number, ToggleChildLayout> {
   const layouts = new Map<number, ToggleChildLayout>()
-  let ownerIndex: number | null = null
-  let firstChildIndex: number | null = null
 
   for (let i = 0; i < blocks.length; i += 1) {
     const block = blocks[i]
-    if (block.type === "toggle") {
-      ownerIndex = block.collapsed ? null : i
-      firstChildIndex = null
-      continue
+    if (block.type !== "toggle" || block.collapsed) continue
+
+    const end = getToggleChildEnd(blocks, i)
+    for (let childIndex = i + 1; childIndex < end; childIndex += 1) {
+      layouts.set(childIndex, {
+        ownerIndex: i,
+        isFirst: childIndex === i + 1,
+        isLast: childIndex === end - 1,
+      })
     }
-
-    if (ownerIndex === null) continue
-    layouts.set(i, {
-      ownerIndex,
-      isFirst: firstChildIndex === null,
-      isLast: false,
-    })
-    firstChildIndex ??= i
   }
-
-  layouts.forEach((layout, index) => {
-    const next = layouts.get(index + 1)
-    layout.isLast = !next || next.ownerIndex !== layout.ownerIndex
-  })
-
   return layouts
 }
 
 function getToggleBodyCounts(blocks: NoteBlock[]): Map<number, number> {
   const counts = new Map<number, number>()
-  let ownerIndex: number | null = null
 
   for (let i = 0; i < blocks.length; i += 1) {
     const block = blocks[i]
-    if (block.type === "toggle") {
-      ownerIndex = i
-      counts.set(i, 0)
-      continue
-    }
-
-    if (ownerIndex !== null) {
-      counts.set(ownerIndex, (counts.get(ownerIndex) ?? 0) + 1)
-    }
+    if (block.type !== "toggle") continue
+    counts.set(i, Math.max(0, getToggleChildEnd(blocks, i) - i - 1))
   }
 
   return counts
@@ -3186,12 +3219,19 @@ function BlockActionMenu({
       <div
         className="relative"
         onMouseEnter={() => onTransformOpenChange(true)}
+        onMouseLeave={() => onTransformOpenChange(false)}
+        onFocusCapture={() => onTransformOpenChange(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            onTransformOpenChange(false)
+          }
+        }}
       >
         <BlockMenuButton
           icon={<Type className="h-4 w-4" />}
           label="转化为"
           trailing={<ChevronRight className="h-4 w-4 text-muted-foreground" />}
-          onClick={() => onTransformOpenChange(!transformOpen)}
+          onClick={() => onTransformOpenChange(true)}
         />
         {transformOpen && (
           <div

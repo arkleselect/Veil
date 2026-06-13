@@ -142,7 +142,8 @@ function renderPublicBlocks(blocks: NoteBlock[]) {
 
     const children: NoteBlock[] = []
     let childIndex = index + 1
-    while (childIndex < blocks.length && blocks[childIndex].type !== "toggle") {
+    const childEnd = getToggleChildEnd(blocks, index)
+    while (childIndex < childEnd) {
       children.push(blocks[childIndex])
       childIndex += 1
     }
@@ -167,6 +168,25 @@ function renderPublicBlocks(blocks: NoteBlock[]) {
   }
 
   return items
+}
+
+function getToggleChildEnd(blocks: NoteBlock[], toggleIndex: number): number {
+  const toggle = blocks[toggleIndex]
+  if (toggle?.type !== "toggle") return toggleIndex + 1
+
+  if (toggle.toggleId) {
+    let end = toggleIndex + 1
+    while (end < blocks.length && blocks[end].toggleParentId === toggle.toggleId) {
+      end += 1
+    }
+    return end
+  }
+
+  let end = toggleIndex + 1
+  while (end < blocks.length && blocks[end].type !== "toggle") {
+    end += 1
+  }
+  return end
 }
 
 function renderPublicBlock(block: NoteBlock, key: string, index: number) {

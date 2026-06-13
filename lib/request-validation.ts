@@ -37,6 +37,8 @@ export const noteBlockSchema = z.object({
   level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   collapsed: z.boolean().optional(),
   showLineNumbers: z.boolean().optional(),
+  toggleId: z.string().trim().min(1).max(120).optional(),
+  toggleParentId: z.string().trim().min(1).max(120).optional(),
 }).strict()
 
 const tagsSchema = z.array(z.string().trim().min(1).max(50)).max(30)

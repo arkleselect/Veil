@@ -20,6 +20,8 @@ export interface NoteBlock {
   level?: HeadingLevel
   collapsed?: boolean
   showLineNumbers?: boolean
+  toggleId?: string
+  toggleParentId?: string
 }
 
 export interface Note {
