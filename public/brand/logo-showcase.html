@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veil Notes - Logo Design Exploration</title>
+  <style>
+    :root {
+      --bg: #f7f8f6;
+      --fg: #1e2220;
+      --muted: #6f7771;
+      --line: #dfe4df;
+      --panel: #ffffff;
+      --accent: #2f6d5b;
+      --mark: #1e2220;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body[data-theme="dark"] {
+      --bg: #151716;
+      --fg: #eef2ef;
+      --muted: #97a19a;
+      --line: #2a302c;
+      --panel: #1b1f1d;
+      --accent: #9bcfbd;
+      --mark: #eef2ef;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 72px 24px 56px;
+    }
+
+    .shell {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 32px;
+      padding-bottom: 42px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 780px;
+      font-size: clamp(44px, 7vw, 92px);
+      font-weight: 520;
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      margin: 22px 0 0;
+      max-width: 620px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .wordmark {
+      width: min(320px, 100%);
+      color: var(--mark);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      margin: 28px 0 0;
+    }
+
+    .swatches,
+    .modes {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--panel) 72%, transparent);
+    }
+
+    .swatch,
+    .mode {
+      border: 0;
+      cursor: pointer;
+      color: var(--fg);
+      background: transparent;
+      font: inherit;
+    }
+
+    .swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      outline: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    }
+
+    .swatch[aria-pressed="true"] {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .mode {
+      min-width: 62px;
+      min-height: 28px;
+      border-radius: 999px;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .mode[aria-pressed="true"] {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 42px;
+    }
+
+    .card {
+      min-height: 390px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
+    }
+
+    .card:hover,
+    .card[data-selected="true"] {
+      transform: translateY(-3px);
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    }
+
+    .card[data-selected="true"] {
+      background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+    }
+
+    .canvas {
+      display: grid;
+      place-items: center;
+      height: 176px;
+      margin-bottom: 26px;
+      color: var(--mark);
+    }
+
+    .canvas svg {
+      width: 116px;
+      height: 116px;
+      overflow: visible;
+      transition: transform 260ms ease;
+    }
+
+    .card:hover .canvas svg {
+      transform: scale(1.04);
+    }
+
+    .meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .rationale {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.68;
+    }
+
+    .downloads {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .download {
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--fg);
+      font-size: 13px;
+      font-weight: 600;
+      transition: border-color 180ms ease, color 180ms ease;
+    }
+
+    .download:hover {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+    }
+
+    .footer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: center;
+      margin-top: 44px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .asset-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    @media (max-width: 980px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 44px 16px;
+      }
+
+      .grid,
+      .downloads,
+      .footer {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Logo design exploration</p>
+          <h1>Veil Notes</h1>
+          <p class="intro">A restrained identity system for a private note product that moves between local files and cloud sync. The strongest direction is 01 Folded Veil: it keeps the current monochrome discipline while making the note and privacy concept readable.</p>
+          <div class="toolbar" aria-label="Logo preview controls">
+            <div class="swatches" aria-label="Mark color">
+              <button class="swatch" style="background:#1e2220" data-color="#1e2220" aria-label="Graphite" aria-pressed="true"></button>
+              <button class="swatch" style="background:#2f6d5b" data-color="#2f6d5b" aria-label="Veil green" aria-pressed="false"></button>
+              <button class="swatch" style="background:#7b4b2d" data-color="#7b4b2d" aria-label="Copper" aria-pressed="false"></button>
+              <button class="swatch" style="background:#f1f4ef" data-color="#f1f4ef" aria-label="Light ink" aria-pressed="false"></button>
+            </div>
+            <div class="modes" aria-label="Page theme">
+              <button class="mode" data-theme-choice="light" aria-pressed="true">Light</button>
+              <button class="mode" data-theme-choice="dark" aria-pressed="false">Dark</button>
+            </div>
+          </div>
+        </div>
+        <svg class="wordmark" role="img" aria-label="Veil Notes recommended wordmark" viewBox="0 0 320 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g transform="translate(8 8)">
+            <path d="M10 6H30.6L42 17.4V52H10V6Z" stroke="currentColor" stroke-width="2.8" stroke-linejoin="round"/>
+            <path d="M30.6 6.6V17.4H41.4" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M15.7 18.2C19.6 28.1 23 34 25.8 36C28.7 33.8 32 27.8 35.8 18.2" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M17.6 39.5H33.4" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" opacity="0.32"/>
+          </g>
+          <text x="74" y="45" fill="currentColor" font-family="Inter, Geist, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="28" font-weight="560" letter-spacing="0">Veil Notes</text>
+        </svg>
+      </section>
+
+      <section class="grid" aria-label="Logo variants">
+        <article class="card" data-selected="true">
+          <div class="canvas">
+            <svg role="img" aria-label="Folded Veil" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25 19H58L76 37V79H25V19Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+              <path d="M58 20V37H75" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M34 38C40.2 53.8 45.6 63.3 50.1 66.5C54.7 62.9 59.9 53.4 66 38" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M37 72H62" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.32"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <h2>Folded Veil</h2>
+            <span class="tag">Recommended</span>
+          </div>
+          <p class="rationale">A folded page carries the note metaphor, while the inner V curve reads as both Veil and a protected layer. This is the best fit for the current monochrome app identity.</p>
+          <div class="downloads">
+            <a class="download" href="./veil-notes-01-folded-veil.svg" download>SVG</a>
+            <a class="download" href="./veil-notes-mark.svg" download>Main mark</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="canvas">
+            <svg role="img" aria-label="Layered Index" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22 34H66C69.3 34 72 36.7 72 40V74C72 77.3 69.3 80 66 80H22V34Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round" opacity="0.34"/>
+              <path d="M28 27H72C75.3 27 78 29.7 78 33V67C78 70.3 75.3 73 72 73H28V27Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+              <path d="M42 41H64" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+              <path d="M42 52H58" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.42"/>
+              <path d="M34 27V73" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <h2>Layered Index</h2>
+            <span class="tag">Organized</span>
+          </div>
+          <p class="rationale">Two offset cards suggest notebooks, versions, and local indexes. The left spine creates a recognizable app icon silhouette without becoming decorative.</p>
+          <div class="downloads">
+            <a class="download" href="./veil-notes-02-layered-index.svg" download>SVG</a>
+            <a class="download" href="./veil-notes-wordmark.svg" download>Wordmark</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="canvas">
+            <svg role="img" aria-label="Sync Orbit" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M27 56C24.4 40.5 34.6 25.6 50.2 22.8C63.4 20.5 76.2 27.7 81.2 39.5" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+              <path d="M73 44C76.3 59.6 66.3 75.2 50.5 78.1C37.5 80.5 24.9 73.8 19.5 62.5" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" opacity="0.36"/>
+              <rect x="34" y="29" width="32" height="42" rx="4" stroke="currentColor" stroke-width="4"/>
+              <path d="M43 43H58" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+              <path d="M43 55H54" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.38"/>
+              <circle cx="25" cy="58" r="5" fill="currentColor"/>
+              <circle cx="75" cy="42" r="4" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <h2>Sync Orbit</h2>
+            <span class="tag">Hybrid</span>
+          </div>
+          <p class="rationale">The two nodes map naturally to desktop and cloud modes. The orbit keeps that technical idea visible while the centered page anchors the mark as a note product.</p>
+          <div class="downloads">
+            <a class="download" href="./veil-notes-03-sync-orbit.svg" download>SVG</a>
+            <a class="download" href="./veil-notes-mark.svg" download>Main mark</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="canvas">
+            <svg role="img" aria-label="Dot Archive" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <g fill="currentColor">
+                <rect x="24" y="23" width="10" height="10" rx="3"/>
+                <rect x="42" y="23" width="10" height="10" rx="3" opacity="0.34"/>
+                <rect x="60" y="23" width="10" height="10" rx="3"/>
+                <rect x="29" y="41" width="10" height="10" rx="3"/>
+                <rect x="51" y="41" width="10" height="10" rx="3"/>
+                <rect x="64" y="41" width="10" height="10" rx="3" opacity="0.34"/>
+                <rect x="37" y="59" width="10" height="10" rx="3"/>
+                <rect x="53" y="59" width="10" height="10" rx="3"/>
+                <rect x="30" y="77" width="40" height="5" rx="2.5"/>
+              </g>
+            </svg>
+          </div>
+          <div class="meta">
+            <h2>Dot Archive</h2>
+            <span class="tag">Modular</span>
+          </div>
+          <p class="rationale">Rounded cells stand for notes, tags, and notebooks. The implied V keeps it branded, and the low contrast cells create a hidden-record feeling.</p>
+          <div class="downloads">
+            <a class="download" href="./veil-notes-04-dot-archive.svg" download>SVG</a>
+            <a class="download" href="./veil-notes-wordmark.svg" download>Wordmark</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="canvas">
+            <svg role="img" aria-label="Monoline VN" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 25L39 75L50 50L61 75L80 25" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M32 28H68" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.28"/>
+              <path d="M38 50H62" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.28"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <h2>Monoline VN</h2>
+            <span class="tag">Compact</span>
+          </div>
+          <p class="rationale">A direct VN mark is the most compact option for small surfaces. The faint horizontal strokes tie it back to writing without weakening the monogram.</p>
+          <div class="downloads">
+            <a class="download" href="./veil-notes-05-monoline-vn.svg" download>SVG</a>
+            <a class="download" href="./veil-notes-mark.svg" download>Main mark</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="canvas">
+            <svg role="img" aria-label="Private Page" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <mask id="private-page-mask-showcase">
+                  <rect width="100" height="100" fill="white"/>
+                  <rect x="36" y="35" width="28" height="5" rx="2.5" fill="black"/>
+                  <rect x="36" y="48" width="20" height="5" rx="2.5" fill="black"/>
+                  <circle cx="50" cy="64" r="4.5" fill="black"/>
+                  <rect x="47.5" y="67" width="5" height="9" rx="2.5" fill="black"/>
+                </mask>
+              </defs>
+              <path d="M27 18H58L74 34V82H27V18Z" fill="currentColor" mask="url(#private-page-mask-showcase)"/>
+              <path d="M58 18V34H74" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.44"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <h2>Private Page</h2>
+            <span class="tag">Secure</span>
+          </div>
+          <p class="rationale">The filled page has strong favicon mass, while the rounded negative cuts imply redacted text and private access. This is the security-forward option.</p>
+          <div class="downloads">
+            <a class="download" href="./veil-notes-06-private-page.svg" download>SVG</a>
+            <a class="download" href="./veil-notes-wordmark.svg" download>Wordmark</a>
+          </div>
+        </article>
+      </section>
+
+      <footer class="footer">
+        <p>Click a card to mark a favorite. All logo files use <code>currentColor</code>, so they can inherit the app theme color without editing the SVG paths.</p>
+        <div class="asset-list">
+          <a class="download" href="./veil-notes-mark.svg" download>Main mark</a>
+          <a class="download" href="./veil-notes-wordmark.svg" download>Wordmark</a>
+        </div>
+      </footer>
+    </div>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const body = document.body;
+    const swatches = document.querySelectorAll(".swatch");
+    const modes = document.querySelectorAll(".mode");
+    const cards = document.querySelectorAll(".card");
+
+    swatches.forEach((button) => {
+      button.addEventListener("click", () => {
+        root.style.setProperty("--mark", button.dataset.color);
+        swatches.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      });
+    });
+
+    modes.forEach((button) => {
+      button.addEventListener("click", () => {
+        const isDark = button.dataset.themeChoice === "dark";
+        body.dataset.theme = isDark ? "dark" : "light";
+        modes.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      });
+    });
+
+    cards.forEach((card) => {
+      card.addEventListener("click", () => {
+        cards.forEach((item) => item.dataset.selected = "false");
+        card.dataset.selected = "true";
+      });
+    });
+  </script>
+</body>
+</html>

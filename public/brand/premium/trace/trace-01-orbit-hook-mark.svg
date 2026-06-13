@@ -1,0 +1,7 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes Orbit Hook mark</title>
+  <desc id="desc">A clear orbital note trace with two anchor nodes.</desc>
+  <path d="M22 62C29.4 37.8 48.2 27.5 64.8 36.2C80.2 44.2 79.2 68.4 61 75.2C47.2 80.4 35.8 69.4 42.2 56.9C47.2 47.1 61.6 48.8 67.5 58.9" stroke="currentColor" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="22" cy="62" r="5.2" fill="currentColor"/>
+  <circle cx="67.5" cy="58.9" r="4.2" fill="currentColor"/>
+</svg>

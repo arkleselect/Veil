@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veil Notes - Premium Logo Concepts</title>
+  <style>
+    :root {
+      --bg: #0f1110;
+      --fg: #eef2ee;
+      --muted: #9aa49d;
+      --line: rgba(238, 242, 238, 0.12);
+      --panel: #171b19;
+      --panel-2: #111412;
+      --accent: #99e4cc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(135deg, rgba(153, 228, 204, 0.06), transparent 38%),
+        linear-gradient(180deg, #131514 0%, #0f1110 52%, #111312 100%);
+      color: var(--fg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    main {
+      width: min(1240px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 72px 0 56px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 32px;
+      align-items: end;
+      padding-bottom: 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 16px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 840px;
+      font-size: clamp(44px, 7vw, 86px);
+      font-weight: 560;
+      line-height: 0.96;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      max-width: 700px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .brand-chip {
+      min-width: 220px;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.035);
+      text-align: right;
+    }
+
+    .brand-chip strong {
+      display: block;
+      font-size: 23px;
+      font-weight: 620;
+    }
+
+    .brand-chip span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 34px;
+    }
+
+    .card {
+      min-height: 520px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+        var(--panel);
+      transition: transform 180ms ease, border-color 180ms ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(153, 228, 204, 0.42);
+    }
+
+    .icon-stage {
+      display: grid;
+      place-items: center;
+      min-height: 170px;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02)),
+        var(--panel-2);
+    }
+
+    .icon-stage img {
+      width: 118px;
+      height: 118px;
+      display: block;
+    }
+
+    .mark-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .mark-row img {
+      width: 54px;
+      height: 54px;
+      filter: invert(1);
+    }
+
+    .wordmark {
+      min-width: 0;
+      text-align: right;
+    }
+
+    .wordmark b {
+      display: block;
+      font-size: 17px;
+      font-weight: 630;
+      white-space: nowrap;
+    }
+
+    .wordmark span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.68;
+    }
+
+    .links {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    a {
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--fg);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    a:hover {
+      border-color: rgba(153, 228, 204, 0.55);
+      color: var(--accent);
+    }
+
+    footer {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1120px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      main {
+        padding-top: 44px;
+      }
+
+      header,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .brand-chip {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">Premium logo concepts</p>
+        <h1>Veil Notes</h1>
+        <p class="intro">Five darker, sharper directions for the notebook system. Each set keeps the logo simple enough for app icons, while adding controlled tension through negative space, optical gradients, and compact geometry.</p>
+      </div>
+      <div class="brand-chip">
+        <strong>Veil Notes</strong>
+        <span>Private notes</span>
+      </div>
+    </header>
+
+    <section class="grid" aria-label="Premium logo concepts">
+      <article class="card">
+        <div class="icon-stage"><img src="./premium-01-aperture-veil-icon.svg" alt="Aperture Veil app icon"></div>
+        <div class="mark-row">
+          <img src="./premium-01-aperture-veil-mark.svg" alt="Aperture Veil mark">
+          <div class="wordmark"><b>Veil Notes</b><span>Aperture</span></div>
+        </div>
+        <div>
+          <h2>Aperture Veil</h2>
+          <p>A privacy-first lens mark. The V exists as a cutout rather than a drawn letter, which gives it a sharper, more premium feeling.</p>
+        </div>
+        <div class="links">
+          <a href="./premium-01-aperture-veil-mark.svg" download>Mark SVG</a>
+          <a href="./premium-01-aperture-veil-icon.svg" download>Icon SVG</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="icon-stage"><img src="./premium-02-phantom-fold-icon.svg" alt="Phantom Fold app icon"></div>
+        <div class="mark-row">
+          <img src="./premium-02-phantom-fold-mark.svg" alt="Phantom Fold mark">
+          <div class="wordmark"><b>Veil Notes</b><span>Fold</span></div>
+        </div>
+        <div>
+          <h2>Phantom Fold</h2>
+          <p>A single ribbon gesture that reads as V, folded page, and hidden thread. It is the most fashion-tech direction of the set.</p>
+        </div>
+        <div class="links">
+          <a href="./premium-02-phantom-fold-mark.svg" download>Mark SVG</a>
+          <a href="./premium-02-phantom-fold-icon.svg" download>Icon SVG</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="icon-stage"><img src="./premium-03-index-beam-icon.svg" alt="Index Beam app icon"></div>
+        <div class="mark-row">
+          <img src="./premium-03-index-beam-mark.svg" alt="Index Beam mark">
+          <div class="wordmark"><b>Veil Notes</b><span>Index</span></div>
+        </div>
+        <div>
+          <h2>Index Beam</h2>
+          <p>Stacked note bars are interrupted by a V-shaped void. This one feels closer to data, search, and organized knowledge.</p>
+        </div>
+        <div class="links">
+          <a href="./premium-03-index-beam-mark.svg" download>Mark SVG</a>
+          <a href="./premium-03-index-beam-icon.svg" download>Icon SVG</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="icon-stage"><img src="./premium-04-sync-trace-icon.svg" alt="Sync Trace app icon"></div>
+        <div class="mark-row">
+          <img src="./premium-04-sync-trace-mark.svg" alt="Sync Trace mark">
+          <div class="wordmark"><b>Veil Notes</b><span>Trace</span></div>
+        </div>
+        <div>
+          <h2>Sync Trace</h2>
+          <p>A continuous line links local and cloud states without becoming a generic network icon. Good if sync is central to the product story.</p>
+        </div>
+        <div class="links">
+          <a href="./premium-04-sync-trace-mark.svg" download>Mark SVG</a>
+          <a href="./premium-04-sync-trace-icon.svg" download>Icon SVG</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="icon-stage"><img src="./premium-05-obsidian-page-icon.svg" alt="Obsidian Page app icon"></div>
+        <div class="mark-row">
+          <img src="./premium-05-obsidian-page-mark.svg" alt="Obsidian Page mark">
+          <div class="wordmark"><b>Veil Notes</b><span>Obsidian</span></div>
+        </div>
+        <div>
+          <h2>Obsidian Page</h2>
+          <p>A solid page monolith with redacted text and V-shaped negative space. It has the strongest app-icon mass and the most private mood.</p>
+        </div>
+        <div class="links">
+          <a href="./premium-05-obsidian-page-mark.svg" download>Mark SVG</a>
+          <a href="./premium-05-obsidian-page-icon.svg" download>Icon SVG</a>
+        </div>
+      </article>
+    </section>
+
+    <footer>
+      Recommendation: start by comparing Aperture Veil, Phantom Fold, and Obsidian Page at small sizes. They have the clearest icon presence while still looking restrained.
+    </footer>
+  </main>
+</body>
+</html>

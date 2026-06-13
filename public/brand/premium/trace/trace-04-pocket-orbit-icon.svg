@@ -1,0 +1,20 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes Pocket Orbit app icon</title>
+  <desc id="desc">Dark app icon for the Pocket Orbit logo.</desc>
+  <defs>
+    <linearGradient id="pocket-orbit-bg" x1="9" y1="9" x2="91" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111616"/>
+      <stop offset="1" stop-color="#1C211D"/>
+    </linearGradient>
+    <linearGradient id="pocket-orbit-stroke" x1="23" y1="36" x2="76" y2="74" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F8F0"/>
+      <stop offset="0.45" stop-color="#76E0C4"/>
+      <stop offset="1" stop-color="#C9D97B"/>
+    </linearGradient>
+  </defs>
+  <rect x="7" y="7" width="86" height="86" rx="22" fill="url(#pocket-orbit-bg)"/>
+  <path d="M23 55C32.7 34.4 52.5 27.2 66.4 37.8C79.3 47.7 76.5 66.4 61.2 72.7C48.2 78.1 35.8 69.9 38.2 57.4C40.2 47 52.8 42.6 63.8 49.8" stroke="url(#pocket-orbit-stroke)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="23" cy="55" r="4.9" fill="#F8F8F0"/>
+  <circle cx="50" cy="58.5" r="5.7" fill="#76E0C4"/>
+  <circle cx="66.4" cy="37.8" r="4.1" fill="#C9D97B"/>
+</svg>

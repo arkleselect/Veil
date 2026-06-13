@@ -1,0 +1,8 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes mark</title>
+  <desc id="desc">Recommended Veil Notes icon: a folded note sheet with a subtle V-shaped veil path.</desc>
+  <path d="M25 19H58L76 37V79H25V19Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M58 20V37H75" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 38C40.2 53.8 45.6 63.3 50.1 66.5C54.7 62.9 59.9 53.4 66 38" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37 72H62" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.32"/>
+</svg>

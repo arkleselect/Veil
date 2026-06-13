@@ -1,0 +1,15 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes dot archive mark</title>
+  <desc id="desc">Rounded archive cells arranged into a quiet V-shaped note index.</desc>
+  <g fill="currentColor">
+    <rect x="24" y="23" width="10" height="10" rx="3"/>
+    <rect x="42" y="23" width="10" height="10" rx="3" opacity="0.34"/>
+    <rect x="60" y="23" width="10" height="10" rx="3"/>
+    <rect x="29" y="41" width="10" height="10" rx="3"/>
+    <rect x="51" y="41" width="10" height="10" rx="3"/>
+    <rect x="64" y="41" width="10" height="10" rx="3" opacity="0.34"/>
+    <rect x="37" y="59" width="10" height="10" rx="3"/>
+    <rect x="53" y="59" width="10" height="10" rx="3"/>
+    <rect x="30" y="77" width="40" height="5" rx="2.5"/>
+  </g>
+</svg>

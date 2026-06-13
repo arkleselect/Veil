@@ -1,0 +1,27 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes index beam app icon</title>
+  <desc id="desc">Dark app icon version of the index beam mark.</desc>
+  <defs>
+    <linearGradient id="beam-bg" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111416"/>
+      <stop offset="1" stop-color="#182021"/>
+    </linearGradient>
+    <linearGradient id="beam-fill" x1="22" y1="25" x2="78" y2="75" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6F8F2"/>
+      <stop offset="0.5" stop-color="#A9F0D6"/>
+      <stop offset="1" stop-color="#A6B8FF"/>
+    </linearGradient>
+    <mask id="index-beam-icon-cut">
+      <rect width="100" height="100" fill="white"/>
+      <path d="M30 25L50 76L70 25" stroke="black" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect x="7" y="7" width="86" height="86" rx="22" fill="url(#beam-bg)"/>
+  <g fill="url(#beam-fill)" mask="url(#index-beam-icon-cut)">
+    <rect x="22" y="25" width="56" height="8" rx="4" transform="rotate(-6 50 29)"/>
+    <rect x="24" y="39" width="52" height="8" rx="4" transform="rotate(-3 50 43)"/>
+    <rect x="20" y="53" width="60" height="8" rx="4" transform="rotate(2 50 57)"/>
+    <rect x="26" y="67" width="48" height="8" rx="4" transform="rotate(5 50 71)"/>
+  </g>
+  <path d="M26 24V76" stroke="#F6F8F2" stroke-width="3.4" stroke-linecap="round" opacity="0.32"/>
+</svg>

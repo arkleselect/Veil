@@ -1,0 +1,7 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes phantom fold mark</title>
+  <desc id="desc">A single folded ribbon forming a compact V-shaped note signal.</desc>
+  <path d="M24 27L42.7 72.1C44.7 76.9 51.1 77.3 53.7 72.8L78 27" stroke="currentColor" stroke-width="6.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M39 28H66.5C72 28 76 32.2 76 37.4V63.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.28"/>
+  <path d="M43 72C51.2 55.2 61.8 38.8 78 27" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" opacity="0.28"/>
+</svg>

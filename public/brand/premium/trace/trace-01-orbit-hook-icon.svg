@@ -1,0 +1,19 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes Orbit Hook app icon</title>
+  <desc id="desc">Dark app icon for the Orbit Hook logo.</desc>
+  <defs>
+    <linearGradient id="orbit-hook-bg" x1="10" y1="9" x2="90" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111716"/>
+      <stop offset="1" stop-color="#20201B"/>
+    </linearGradient>
+    <linearGradient id="orbit-hook-stroke" x1="22" y1="35" x2="75" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6F8F2"/>
+      <stop offset="0.5" stop-color="#7BE2C8"/>
+      <stop offset="1" stop-color="#E5C46F"/>
+    </linearGradient>
+  </defs>
+  <rect x="7" y="7" width="86" height="86" rx="22" fill="url(#orbit-hook-bg)"/>
+  <path d="M22 62C29.4 37.8 48.2 27.5 64.8 36.2C80.2 44.2 79.2 68.4 61 75.2C47.2 80.4 35.8 69.4 42.2 56.9C47.2 47.1 61.6 48.8 67.5 58.9" stroke="url(#orbit-hook-stroke)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="22" cy="62" r="5.2" fill="#F6F8F2"/>
+  <circle cx="67.5" cy="58.9" r="4.2" fill="#E5C46F"/>
+</svg>

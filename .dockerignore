@@ -1,0 +1,11 @@
+node_modules
+.next
+release
+data
+.env
+.env*.local
+.git
+.idea
+Dockerfile
+docker-compose.yml
+*.log

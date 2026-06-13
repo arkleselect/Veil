@@ -1,0 +1,7 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes Quiet Comet mark</title>
+  <desc id="desc">A controlled comet-like path for fast note capture and sync.</desc>
+  <path d="M19 64C31.5 37.5 55.5 28.2 70.5 40.1C82.6 49.7 78.7 67.6 64.2 72.7C50.3 77.6 38.2 67.2 44.6 55.4C49.1 47.1 60.6 46.7 68.2 53.7" stroke="currentColor" stroke-width="5.1" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="19" cy="64" r="5.8" fill="currentColor"/>
+  <circle cx="70.5" cy="40.1" r="4.4" fill="currentColor"/>
+</svg>

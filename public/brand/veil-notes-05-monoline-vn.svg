@@ -1,0 +1,7 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes monoline VN mark</title>
+  <desc id="desc">A compact VN monogram drawn as a single notebook thread.</desc>
+  <path d="M20 25L39 75L50 50L61 75L80 25" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 28H68" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.28"/>
+  <path d="M38 50H62" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.28"/>
+</svg>

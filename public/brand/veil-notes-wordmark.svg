@@ -1,0 +1,11 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 320 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes wordmark</title>
+  <desc id="desc">Veil Notes recommended icon paired with a clean wordmark.</desc>
+  <g transform="translate(8 8)">
+    <path d="M10 6H30.6L42 17.4V52H10V6Z" stroke="currentColor" stroke-width="2.8" stroke-linejoin="round"/>
+    <path d="M30.6 6.6V17.4H41.4" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M15.7 18.2C19.6 28.1 23 34 25.8 36C28.7 33.8 32 27.8 35.8 18.2" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M17.6 39.5H33.4" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" opacity="0.32"/>
+  </g>
+  <text x="74" y="45" fill="currentColor" font-family="Inter, Geist, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="28" font-weight="560" letter-spacing="0">Veil Notes</text>
+</svg>

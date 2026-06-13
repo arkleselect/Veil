@@ -1,0 +1,9 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes layered index mark</title>
+  <desc id="desc">Layered note cards with a protected central index line.</desc>
+  <path d="M22 34H66C69.3 34 72 36.7 72 40V74C72 77.3 69.3 80 66 80H22V34Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round" opacity="0.34"/>
+  <path d="M28 27H72C75.3 27 78 29.7 78 33V67C78 70.3 75.3 73 72 73H28V27Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M42 41H64" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+  <path d="M42 52H58" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.42"/>
+  <path d="M34 27V73" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+</svg>

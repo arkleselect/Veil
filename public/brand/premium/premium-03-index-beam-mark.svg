@@ -1,0 +1,17 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes index beam mark</title>
+  <desc id="desc">Stacked note index beams interrupted by a V-shaped negative-space cut.</desc>
+  <defs>
+    <mask id="index-beam-cut">
+      <rect width="100" height="100" fill="white"/>
+      <path d="M30 25L50 76L70 25" stroke="black" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <g fill="currentColor" mask="url(#index-beam-cut)">
+    <rect x="22" y="25" width="56" height="8" rx="4" transform="rotate(-6 50 29)"/>
+    <rect x="24" y="39" width="52" height="8" rx="4" transform="rotate(-3 50 43)"/>
+    <rect x="20" y="53" width="60" height="8" rx="4" transform="rotate(2 50 57)"/>
+    <rect x="26" y="67" width="48" height="8" rx="4" transform="rotate(5 50 71)"/>
+  </g>
+  <path d="M26 24V76" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" opacity="0.38"/>
+</svg>

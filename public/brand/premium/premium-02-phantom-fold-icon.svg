@@ -1,0 +1,19 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes phantom fold app icon</title>
+  <desc id="desc">Dark app icon version of the phantom fold mark.</desc>
+  <defs>
+    <linearGradient id="fold-bg" x1="11" y1="9" x2="90" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#121217"/>
+      <stop offset="1" stop-color="#202327"/>
+    </linearGradient>
+    <linearGradient id="fold-stroke" x1="24" y1="27" x2="78" y2="74" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4F0E8"/>
+      <stop offset="0.48" stop-color="#D2B48C"/>
+      <stop offset="1" stop-color="#8EA7FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="7" y="7" width="86" height="86" rx="22" fill="url(#fold-bg)"/>
+  <path d="M24 27L42.7 72.1C44.7 76.9 51.1 77.3 53.7 72.8L78 27" stroke="url(#fold-stroke)" stroke-width="6.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M39 28H66.5C72 28 76 32.2 76 37.4V63.5" stroke="#F5F2EA" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.23"/>
+  <path d="M43 72C51.2 55.2 61.8 38.8 78 27" stroke="#F5F2EA" stroke-width="3.2" stroke-linecap="round" opacity="0.24"/>
+</svg>

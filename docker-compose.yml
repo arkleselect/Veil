@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: veil_notes
+      POSTGRES_USER: veil
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veil -d veil_notes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN}
+      DATABASE_URL: postgres://veil:${POSTGRES_PASSWORD}@postgres:5432/veil_notes
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-10}
+      VEIL_ALLOW_REGISTRATION: ${VEIL_ALLOW_REGISTRATION:-false}
+      VEIL_SEED_SAMPLE_NOTES: ${VEIL_SEED_SAMPLE_NOTES:-false}
+      VEIL_AUTH_LOCKOUT_FAILURES: ${VEIL_AUTH_LOCKOUT_FAILURES:-10}
+      VEIL_AUTH_LOCKOUT_WINDOW_MINUTES: ${VEIL_AUTH_LOCKOUT_WINDOW_MINUTES:-15}
+      VEIL_AUTH_LOCKOUT_DURATION_MINUTES: ${VEIL_AUTH_LOCKOUT_DURATION_MINUTES:-15}
+      VEIL_UPLOAD_DIR: /app/uploads
+      VEIL_MAX_UPLOAD_BYTES: ${VEIL_MAX_UPLOAD_BYTES:-10485760}
+      VEIL_ASSET_QUOTA_BYTES: ${VEIL_ASSET_QUOTA_BYTES:-1073741824}
+      VEIL_ORPHAN_ASSET_GRACE_DAYS: ${VEIL_ORPHAN_ASSET_GRACE_DAYS:-7}
+    volumes:
+      - uploads-data:/app/uploads
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  uploads-data:

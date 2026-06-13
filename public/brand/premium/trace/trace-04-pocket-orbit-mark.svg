@@ -1,0 +1,8 @@
+<svg role="img" aria-labelledby="title desc" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title id="title">Veil Notes Pocket Orbit mark</title>
+  <desc id="desc">A compact orbit path around a private note nucleus.</desc>
+  <path d="M23 55C32.7 34.4 52.5 27.2 66.4 37.8C79.3 47.7 76.5 66.4 61.2 72.7C48.2 78.1 35.8 69.9 38.2 57.4C40.2 47 52.8 42.6 63.8 49.8" stroke="currentColor" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="23" cy="55" r="4.9" fill="currentColor"/>
+  <circle cx="50" cy="58.5" r="5.7" fill="currentColor"/>
+  <circle cx="66.4" cy="37.8" r="4.1" fill="currentColor"/>
+</svg>
