@@ -90,6 +90,9 @@ interface ImageBlockData {
   alt: string
 }
 
+const EDITOR_ARTICLE_WIDTH = "clamp(42rem, 72%, 54rem)"
+const EDITOR_ARTICLE_MAX_WIDTH = "calc(100% - 3rem)"
+
 export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onToggleNoteList, onUpdateNote }: EditorProps) {
   const { toast } = useToast()
   const [tocOpen, setTocOpen] = useState(true)
@@ -314,7 +317,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     lastSelectedBlockIndexRef.current = null
   }, [])
 
-  const focusBlock = useCallback((index: number) => {
+  const focusBlock = useCallback((index: number, placement: "start" | "end" = "end") => {
     const el = blockRefs.current[index]
     if (!el) return
     el.focus()
@@ -328,7 +331,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
 
     const range = document.createRange()
     range.selectNodeContents(el)
-    range.collapse(false)
+    range.collapse(placement === "start")
     const sel = window.getSelection()
     sel?.removeAllRanges()
     sel?.addRange(range)
@@ -908,7 +911,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       } else if (split.atStart) {
         next[index] = { type: "paragraph", text: "", ...(parentId ? { toggleParentId: parentId } : {}) }
         next.splice(index + 1, 0, { ...current[index], text: split.afterHtml })
-        focusIndex = index
+        focusIndex = index + 1
       } else {
         next[index] = { ...next[index], text: split.beforeHtml }
         next.splice(index + 1, 0, { type: "paragraph", text: split.afterHtml, ...(parentId ? { toggleParentId: parentId } : {}) })
@@ -923,7 +926,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       applyBlockKeys(nextKeys)
       clearBlockSelection()
       setTimeout(() => {
-        focusBlock(focusIndex)
+        focusBlock(focusIndex, "start")
       }, 0)
     }
     if (e.key === "Backspace" && isEmptyHtml(el.innerHTML)) {
@@ -1353,7 +1356,16 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       : getImageFilesFromHtml(clipboardHtml)
     const imageFiles = [...files, ...htmlImageFiles]
     const hasImageHtml = clipboardHtmlHasImages(clipboardHtml)
-    if (imageFiles.length === 0 && !hasImageHtml) return
+    const pasteBlocks = buildPasteBlocksWithAssets(clipboardHtml, clipboardText, [])
+    const activeBlockIsEmpty = isEmptyHtml(blocksRef.current[index]?.text ?? "")
+    const shouldPasteAsBlocks =
+      imageFiles.length > 0 ||
+      hasImageHtml ||
+      pasteBlocks.length > 1 ||
+      (activeBlockIsEmpty && clipboardHtmlHasBlockContent(clipboardHtml)) ||
+      clipboardTextHasMultipleBlocks(clipboardText)
+
+    if (!shouldPasteAsBlocks) return
 
     event.preventDefault()
     activeBlockRef.current = index
@@ -1366,12 +1378,11 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       return
     }
 
-    const pasteBlocks = buildPasteBlocksWithAssets(clipboardHtml, clipboardText, [])
     if (pasteBlocks.length === 0 || !insertBlocksAtActiveBlock(pasteBlocks)) {
       toast("粘贴失败", "error")
       return
     }
-    toast("已粘贴文字和图片", "success")
+    toast(hasImageHtml ? "已粘贴文字和图片" : "已粘贴内容", "success")
   }, [captureSelection, clearBlockSelection, domSave, editingMode, imageUploadPending, insertBlocksAtActiveBlock, toast, uploadAndInsertClipboard])
 
   const handleBlockClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -1811,7 +1822,10 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
           onScroll={updateReadingProgress}
           className="scrollbar-hidden min-w-0 flex-1 overflow-y-auto"
         >
-          <article className="mx-auto w-[calc(100%-3rem)] max-w-2xl px-0 py-8 sm:py-10">
+          <article
+            className="mx-auto px-0 py-8 sm:py-10"
+            style={{ width: EDITOR_ARTICLE_WIDTH, maxWidth: EDITOR_ARTICLE_MAX_WIDTH }}
+          >
             {/* 标题 */}
             <div data-editor-ignore-mousedown="true" className="flex min-w-0 items-start">
               <div className="min-w-0 flex-1">
@@ -1829,7 +1843,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                     onKeyDown={(e) => {
                       if (e.key === "Enter") (e.target as HTMLInputElement).blur()
                     }}
-                    className="w-full bg-transparent text-3xl font-semibold tracking-tight text-foreground outline-none"
+                    className="w-full bg-transparent text-3xl font-bold tracking-tight text-foreground outline-none"
                   />
                 ) : (
                   <h1
@@ -1838,7 +1852,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                       setTitleDraft(note.title)
                       setEditingTitle(true)
                     }}
-                    className={cn("break-words text-pretty text-3xl font-semibold tracking-tight text-foreground", editingMode && "cursor-text")}
+                    className={cn("break-words text-pretty text-3xl font-bold tracking-tight text-foreground", editingMode && "cursor-text")}
                   >
                     {note.title}
                   </h1>
@@ -2016,7 +2030,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                         data-editor-control="true"
                         onMouseDown={(event) => startBlockRangeSelection(i, event)}
                         aria-hidden="true"
-                        className="absolute right-0 top-0 z-[1] h-full w-16 cursor-default"
+                        className="absolute -right-24 top-0 z-[1] h-full w-20 cursor-default"
                       />
                     )}
                     {editingMode && (
@@ -2609,10 +2623,92 @@ function buildPasteBlocksWithAssets(clipboardHtml: string, clipboardText: string
   }
 
   const blocks: NoteBlock[] = []
-  const text = clipboardText.trim()
-  if (text) blocks.push({ type: "paragraph", text: escapeHtml(text).replace(/\r?\n/g, "<br>") })
+  blocks.push(...plainTextToPasteBlocks(clipboardText))
   blocks.push(...assets.map(assetToImageBlock))
   return blocks
+}
+
+function plainTextToPasteBlocks(value: string): NoteBlock[] {
+  const text = value.replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ").trim()
+  if (!text) return []
+
+  const fencedCodeMatch = text.match(/^```[^\n]*\n([\s\S]*?)\n```$/)
+  if (fencedCodeMatch) return [{ type: "code", text: escapeHtml(fencedCodeMatch[1]) }]
+
+  return splitPlainTextBlocks(text).map(markdownTextToBlock)
+}
+
+function splitPlainTextBlocks(value: string): string[] {
+  if (/\n\s*\n/.test(value)) {
+    return value.split(/\n\s*\n+/).map((item) => item.trim()).filter(Boolean)
+  }
+
+  const lines = value.split("\n").map((line) => line.trim()).filter(Boolean)
+  return lines.length > 1 ? lines : [value]
+}
+
+function markdownTextToBlock(value: string): NoteBlock {
+  const text = value.trim()
+  const imageMatch = text.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/)
+  if (imageMatch) {
+    const src = normalizeImageBlockSrc(imageMatch[2])
+    if (src) return imageToBlock(src, imageMatch[1])
+  }
+
+  const todoMatch = text.match(/^[-*+]\s+\[([ xX])\]\s+([\s\S]+)$/)
+  if (todoMatch) {
+    return {
+      type: "todo",
+      text: plainTextBlockHtml(todoMatch[2]),
+      checked: todoMatch[1].toLowerCase() === "x",
+    }
+  }
+
+  const headingMatch = text.match(/^(#{1,3})\s+([\s\S]+)$/)
+  if (headingMatch) {
+    return {
+      type: "heading",
+      level: headingMatch[1].length as HeadingLevel,
+      text: plainTextBlockHtml(headingMatch[2]),
+    }
+  }
+
+  const bulletMatch = text.match(/^[-*+]\s+([\s\S]+)$/)
+  if (bulletMatch) return { type: "bullet", text: plainTextBlockHtml(bulletMatch[1]) }
+
+  const orderedMatch = text.match(/^\d+[.)]\s+([\s\S]+)$/)
+  if (orderedMatch) return { type: "ordered", text: plainTextBlockHtml(orderedMatch[1]) }
+
+  if (text.startsWith(">")) {
+    return {
+      type: "quote",
+      text: plainTextBlockHtml(text.replace(/^>\s?/gm, "")),
+    }
+  }
+
+  return { type: "paragraph", text: plainTextBlockHtml(text) }
+}
+
+function plainTextBlockHtml(value: string): string {
+  return escapeHtml(value.trim()).replace(/\n/g, "<br>")
+}
+
+function clipboardHtmlHasBlockContent(html: string): boolean {
+  if (!html.trim()) return false
+  const blockSelector = Array.from(BLOCK_TAGS).join(",")
+  if (typeof DOMParser === "undefined") return /<(address|article|aside|blockquote|div|figure|figcaption|h[1-6]|li|ol|p|pre|section|table|ul)\b/i.test(html)
+
+  const doc = new DOMParser().parseFromString(html, "text/html")
+  return Array.from(doc.body.querySelectorAll(blockSelector)).some((element) => (
+    !!element.textContent?.trim() || !!element.querySelector("img")
+  ))
+}
+
+function clipboardTextHasMultipleBlocks(text: string): boolean {
+  const normalized = text.replace(/\r\n?/g, "\n").trim()
+  if (!normalized) return false
+  if (/\n\s*\n/.test(normalized)) return true
+  return normalized.split("\n").filter((line) => line.trim()).length > 1
 }
 
 function htmlToImageAwareBlocks(root: ParentNode): NoteBlock[] {
@@ -3179,7 +3275,7 @@ function ImageBlock({
             event.stopPropagation()
             onInsertAfter()
           }}
-          className="absolute -bottom-4 left-0 right-0 h-4 cursor-text rounded-[6px] outline-none"
+          className="absolute -bottom-8 left-0 right-0 z-20 h-8 cursor-text rounded-[6px] outline-none"
         />
       )}
     </div>
