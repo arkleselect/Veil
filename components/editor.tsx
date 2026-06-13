@@ -557,21 +557,19 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     if (normalizedIndexes.length === 0) return
     if (type === "toggle") {
       const firstIndex = normalizedIndexes[0]
+      const lastIndex = normalizedIndexes[normalizedIndexes.length - 1]
       const currentKeys = blockKeys.length === current.length
         ? [...blockKeys]
         : current.map(() => makeBlockKey())
-      const next = [...current]
-      const nextKeys = [...currentKeys]
       const toggleId = makeToggleId()
-      next[firstIndex] = toToggleBlock(current[firstIndex], toggleId)
-      if (normalizedIndexes.length === 1) {
-        next.splice(firstIndex + 1, 0, { type: "paragraph", text: "", toggleParentId: toggleId })
-        nextKeys.splice(firstIndex + 1, 0, makeBlockKey())
-      } else {
-        normalizedIndexes.slice(1).forEach((index) => {
-          next[index] = { ...next[index], toggleParentId: toggleId }
-        })
-      }
+      const next = current.map((block, index) => (
+        index >= firstIndex && index <= lastIndex
+          ? { ...block, toggleParentId: toggleId }
+          : block
+      ))
+      const nextKeys = [...currentKeys]
+      next.splice(firstIndex, 0, { type: "toggle", text: "", collapsed: false, toggleId })
+      nextKeys.splice(firstIndex, 0, makeBlockKey())
       commitBlocks(note.id, next)
       applyBlockKeys(nextKeys)
       clearBlockSelection()
@@ -916,6 +914,10 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
         next.splice(index + 1, 0, { type: "paragraph", text: split.afterHtml, ...(parentId ? { toggleParentId: parentId } : {}) })
       }
 
+      const updatedCurrentBlock = next[index]
+      if (!getImageBlockData(updatedCurrentBlock.text)) {
+        el.innerHTML = updatedCurrentBlock.text
+      }
       nextKeys.splice(index + 1, 0, makeBlockKey())
       commitBlocks(note.id, next)
       applyBlockKeys(nextKeys)
@@ -1043,7 +1045,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       }
 
       const lastBlock = blocks[blocks.length - 1]
-      if (lastBlock && isEmptyHtml(lastBlock.text)) {
+      if (lastBlock && !lastBlock.toggleParentId && isEmptyHtml(lastBlock.text)) {
         focusBlock(blocks.length - 1)
         return
       }
