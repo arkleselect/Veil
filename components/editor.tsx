@@ -3204,6 +3204,33 @@ function BlockActionMenu({
   onCut: () => void
 }) {
   const headingLevel = block.type === "heading" ? getHeadingLevel(block) : null
+  const transformCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearTransformCloseTimer = useCallback(() => {
+    if (!transformCloseTimerRef.current) return
+    clearTimeout(transformCloseTimerRef.current)
+    transformCloseTimerRef.current = null
+  }, [])
+
+  const openTransformMenu = useCallback(() => {
+    clearTransformCloseTimer()
+    onTransformOpenChange(true)
+  }, [clearTransformCloseTimer, onTransformOpenChange])
+
+  const closeTransformMenu = useCallback(() => {
+    clearTransformCloseTimer()
+    onTransformOpenChange(false)
+  }, [clearTransformCloseTimer, onTransformOpenChange])
+
+  const scheduleTransformClose = useCallback(() => {
+    clearTransformCloseTimer()
+    transformCloseTimerRef.current = setTimeout(() => {
+      transformCloseTimerRef.current = null
+      onTransformOpenChange(false)
+    }, 180)
+  }, [clearTransformCloseTimer, onTransformOpenChange])
+
+  useEffect(() => clearTransformCloseTimer, [clearTransformCloseTimer])
 
   return (
     <div
@@ -3218,12 +3245,12 @@ function BlockActionMenu({
     >
       <div
         className="relative"
-        onMouseEnter={() => onTransformOpenChange(true)}
-        onMouseLeave={() => onTransformOpenChange(false)}
-        onFocusCapture={() => onTransformOpenChange(true)}
+        onMouseEnter={openTransformMenu}
+        onMouseLeave={scheduleTransformClose}
+        onFocusCapture={openTransformMenu}
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            onTransformOpenChange(false)
+            closeTransformMenu()
           }
         }}
       >
@@ -3231,98 +3258,107 @@ function BlockActionMenu({
           icon={<Type className="h-4 w-4" />}
           label="转化为"
           trailing={<ChevronRight className="h-4 w-4 text-muted-foreground" />}
-          onClick={() => onTransformOpenChange(true)}
+          onClick={openTransformMenu}
         />
         {transformOpen && (
-          <div
-            role="menu"
-            className="absolute left-[calc(100%+12px)] top-1/2 z-50 w-44 origin-left -translate-y-1/2 rounded-[8px] border border-border bg-popover p-1.5 text-[13px] text-popover-foreground shadow-lg shadow-black/20 animate-in fade-in-0 zoom-in-95 slide-in-from-left-2 duration-150"
-          >
-            <div className="grid grid-cols-4 gap-1">
-              <BlockTransformIconButton
-                active={headingLevel === 1}
-                label="标题 1"
-                onClick={() => onTransform("heading", 1)}
-              >
-                <Heading1 className="h-4 w-4" />
-              </BlockTransformIconButton>
-              <BlockTransformIconButton
-                active={headingLevel === 2}
-                label="标题 2"
-                onClick={() => onTransform("heading", 2)}
-              >
-                <Heading2 className="h-4 w-4" />
-              </BlockTransformIconButton>
-              <BlockTransformIconButton
-                active={headingLevel === 3}
-                label="标题 3"
-                onClick={() => onTransform("heading", 3)}
-              >
-                <Heading3 className="h-4 w-4" />
-              </BlockTransformIconButton>
-              <BlockTransformIconButton
-                active={block.type === "paragraph"}
-                label="文本"
-                onClick={() => onTransform("paragraph")}
-              >
-                <Type className="h-4 w-4" />
-              </BlockTransformIconButton>
-              <BlockTransformIconButton
-                active={block.type === "bullet"}
-                label="无序列表"
-                onClick={() => onTransform("bullet")}
-              >
-                <List className="h-4 w-4" />
-              </BlockTransformIconButton>
-              <BlockTransformIconButton
-                active={block.type === "ordered"}
-                label="有序列表"
-                onClick={() => onTransform("ordered")}
-              >
-                <ListOrdered className="h-4 w-4" />
-              </BlockTransformIconButton>
-              <BlockTransformIconButton
-                active={block.type === "todo"}
-                label="待办"
-                onClick={() => onTransform("todo")}
-              >
-                <ListChecks className="h-4 w-4" />
-              </BlockTransformIconButton>
-            </div>
+          <>
+            <span
+              aria-hidden="true"
+              onMouseEnter={openTransformMenu}
+              className="absolute left-full top-1/2 z-40 h-44 w-3 -translate-y-1/2"
+            />
+            <div
+              role="menu"
+              onMouseEnter={openTransformMenu}
+              onMouseLeave={scheduleTransformClose}
+              className="absolute left-[calc(100%+12px)] top-1/2 z-50 w-44 origin-left -translate-y-1/2 rounded-[8px] border border-border bg-popover p-1.5 text-[13px] text-popover-foreground shadow-lg shadow-black/20 animate-in fade-in-0 zoom-in-95 slide-in-from-left-2 duration-150"
+            >
+              <div className="grid grid-cols-4 gap-1">
+                <BlockTransformIconButton
+                  active={headingLevel === 1}
+                  label="标题 1"
+                  onClick={() => onTransform("heading", 1)}
+                >
+                  <Heading1 className="h-4 w-4" />
+                </BlockTransformIconButton>
+                <BlockTransformIconButton
+                  active={headingLevel === 2}
+                  label="标题 2"
+                  onClick={() => onTransform("heading", 2)}
+                >
+                  <Heading2 className="h-4 w-4" />
+                </BlockTransformIconButton>
+                <BlockTransformIconButton
+                  active={headingLevel === 3}
+                  label="标题 3"
+                  onClick={() => onTransform("heading", 3)}
+                >
+                  <Heading3 className="h-4 w-4" />
+                </BlockTransformIconButton>
+                <BlockTransformIconButton
+                  active={block.type === "paragraph"}
+                  label="文本"
+                  onClick={() => onTransform("paragraph")}
+                >
+                  <Type className="h-4 w-4" />
+                </BlockTransformIconButton>
+                <BlockTransformIconButton
+                  active={block.type === "bullet"}
+                  label="无序列表"
+                  onClick={() => onTransform("bullet")}
+                >
+                  <List className="h-4 w-4" />
+                </BlockTransformIconButton>
+                <BlockTransformIconButton
+                  active={block.type === "ordered"}
+                  label="有序列表"
+                  onClick={() => onTransform("ordered")}
+                >
+                  <ListOrdered className="h-4 w-4" />
+                </BlockTransformIconButton>
+                <BlockTransformIconButton
+                  active={block.type === "todo"}
+                  label="待办"
+                  onClick={() => onTransform("todo")}
+                >
+                  <ListChecks className="h-4 w-4" />
+                </BlockTransformIconButton>
+              </div>
 
-            <div className="mt-2 grid grid-cols-2 gap-1">
-              <BlockTransformTextButton
-                active={block.type === "highlight"}
-                icon={<Highlighter className="h-3.5 w-3.5" />}
-                label="高亮块"
-                onClick={() => onTransform("highlight")}
-              />
-              <BlockTransformTextButton
-                active={block.type === "quote"}
-                icon={<Quote className="h-3.5 w-3.5" />}
-                label="引用"
-                onClick={() => onTransform("quote")}
-              />
-              <BlockTransformTextButton
-                active={block.type === "columns"}
-                icon={<Columns2 className="h-3.5 w-3.5" />}
-                label="分栏"
-                onClick={() => onTransform("columns")}
-              />
-              <BlockTransformTextButton
-                active={block.type === "toggle"}
-                icon={<ListCollapse className="h-3.5 w-3.5" />}
-                label="折叠块"
-                onClick={() => onTransform("toggle")}
-              />
-              <BlockTransformTextButton
-                active={block.type === "code"}
-                icon={<Code2 className="h-3.5 w-3.5" />}
-                label="代码块"
-                onClick={() => onTransform("code")}
-              />
+              <div className="mt-2 grid grid-cols-2 gap-1">
+                <BlockTransformTextButton
+                  active={block.type === "highlight"}
+                  icon={<Highlighter className="h-3.5 w-3.5" />}
+                  label="高亮块"
+                  onClick={() => onTransform("highlight")}
+                />
+                <BlockTransformTextButton
+                  active={block.type === "quote"}
+                  icon={<Quote className="h-3.5 w-3.5" />}
+                  label="引用"
+                  onClick={() => onTransform("quote")}
+                />
+                <BlockTransformTextButton
+                  active={block.type === "columns"}
+                  icon={<Columns2 className="h-3.5 w-3.5" />}
+                  label="分栏"
+                  onClick={() => onTransform("columns")}
+                />
+                <BlockTransformTextButton
+                  active={block.type === "toggle"}
+                  icon={<ListCollapse className="h-3.5 w-3.5" />}
+                  label="折叠块"
+                  onClick={() => onTransform("toggle")}
+                />
+                <BlockTransformTextButton
+                  active={block.type === "code"}
+                  icon={<Code2 className="h-3.5 w-3.5" />}
+                  label="代码块"
+                  onClick={() => onTransform("code")}
+                />
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
