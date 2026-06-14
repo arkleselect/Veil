@@ -2345,7 +2345,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                   <List className="h-4 w-4" />
                 </ToolbarButton>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
+              <div className="toc-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
                 <ul className="pb-24 pl-4">
                   {headings.length === 0 && (
                     <li className="text-xs text-muted-foreground">暂无目录</li>
@@ -2406,7 +2406,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
               >
                 <Eye className="h-4 w-4" />
               </button>
-              <div className="max-h-full w-full overflow-y-auto py-2">
+              <div className="toc-scrollbar max-h-full w-full overflow-y-auto py-2">
                 {tocHeadings.length === 0 ? (
                   <p className="text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">暂无目录</p>
                 ) : (

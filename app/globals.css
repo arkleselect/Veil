@@ -223,4 +223,34 @@
   .scrollbar-hidden::-webkit-scrollbar {
     display: none;
   }
+
+  .toc-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--foreground) 24%, transparent) transparent;
+  }
+
+  .toc-scrollbar::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .toc-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .toc-scrollbar::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--foreground) 18%, transparent);
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 999px;
+  }
+
+  .toc-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--foreground) 30%, transparent);
+  }
+
+  .toc-scrollbar::-webkit-scrollbar-button {
+    display: none;
+    height: 0;
+    width: 0;
+  }
 }
