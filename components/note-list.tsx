@@ -953,7 +953,7 @@ function NoteMenu({ onCopyTitle, onRename, onDelete, deleteLabel = "删除" }: {
         type="button"
         role="menuitem"
         onClick={onCopyTitle}
-        className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-popover-foreground transition-colors hover:bg-accent"
       >
         <Copy className="h-3.5 w-3.5" />
         复制标题
@@ -962,7 +962,7 @@ function NoteMenu({ onCopyTitle, onRename, onDelete, deleteLabel = "删除" }: {
         type="button"
         role="menuitem"
         onClick={onRename}
-        className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-popover-foreground transition-colors hover:bg-accent"
       >
         <Pencil className="h-3.5 w-3.5" />
         重命名
