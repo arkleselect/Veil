@@ -92,9 +92,9 @@ interface ImageBlockData {
 
 const EDITOR_ARTICLE_WIDTH = "clamp(42rem, 72%, 54rem)"
 const EDITOR_ARTICLE_MAX_WIDTH = "calc(100% - 3rem)"
-const TOC_DEFAULT_WIDTH = 292
+const TOC_DEFAULT_WIDTH = 336
 const TOC_MIN_WIDTH = 240
-const TOC_MAX_WIDTH = 420
+const TOC_MAX_WIDTH = 460
 
 export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onToggleNoteList, onUpdateNote }: EditorProps) {
   const { toast } = useToast()
@@ -2355,7 +2355,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                           type="button"
                           onClick={() => handleTocClick(heading.index)}
                           className={cn(
-                            "min-w-0 flex-1 truncate py-0.5 text-left text-sm text-foreground/70 transition-colors hover:text-foreground",
+                            "min-w-0 flex-1 truncate py-0.5 text-left text-[15px] leading-6 text-foreground/70 transition-colors hover:text-foreground",
                             heading.level <= 1 && "font-medium",
                             active && "font-semibold text-foreground",
                           )}
@@ -2390,7 +2390,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                         <li key={`${heading.index}-${i}`}>
                           <div
                             className={cn(
-                              "flex w-full items-center gap-1 text-sm text-foreground/70 transition-colors hover:text-foreground",
+                              "flex w-full items-center gap-1 text-[15px] text-foreground/70 transition-colors hover:text-foreground",
                               active && "text-foreground",
                             )}
                           >
