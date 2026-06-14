@@ -1555,6 +1555,11 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     .filter((item): item is { text: string; index: number; level: HeadingLevel } => item !== null)
   const tocHeadings = getTocHeadings(headings)
   const visibleTocHeadings = getVisibleTocHeadings(tocHeadings, collapsedTocHeadingIds)
+  const collapsibleTocHeadingIndexes = tocHeadings
+    .filter((heading) => heading.hasChildren)
+    .map((heading) => heading.index)
+  const allTocHeadingsCollapsed = collapsibleTocHeadingIndexes.length > 0 &&
+    collapsibleTocHeadingIndexes.every((index) => collapsedTocHeadingIds.has(index))
 
   const toggleTocHeading = useCallback((index: number) => {
     setCollapsedTocHeadingIds((prev) => {
@@ -1564,6 +1569,21 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       return next
     })
   }, [])
+
+  const toggleAllTocHeadings = () => {
+    setCollapsedTocHeadingIds((prev) => {
+      const next = new Set(prev)
+      const allCollapsed = collapsibleTocHeadingIndexes.length > 0 &&
+        collapsibleTocHeadingIndexes.every((index) => next.has(index))
+
+      collapsibleTocHeadingIndexes.forEach((index) => {
+        if (allCollapsed) next.delete(index)
+        else next.add(index)
+      })
+
+      return next
+    })
+  }
 
   const handleTocClick = useCallback((index: number) => {
     const el = blockRefs.current[index]
@@ -2305,68 +2325,75 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
         <aside
           style={{ width: tocWidth }}
           className={cn(
-            "hidden shrink-0 xl:block",
-            tocOpen ? "px-6 py-8" : "px-4 py-8",
+            "hidden min-h-0 shrink-0 overflow-hidden xl:flex",
+            tocOpen ? "flex-col px-6 py-8" : "px-4 py-8",
           )}
         >
           {tocOpen ? (
             <>
-              <div className="mb-5 flex items-center gap-3">
+              <div className="mb-5 flex shrink-0 items-center gap-3">
                 <h3 className="text-base font-semibold text-foreground">大纲</h3>
                 <ToolbarButton onClick={() => setTocOpen(false)} label="隐藏大纲">
                   <Eye className="h-4 w-4" />
                 </ToolbarButton>
-                <ToolbarButton label="大纲列表">
+                <ToolbarButton
+                  onClick={toggleAllTocHeadings}
+                  active={allTocHeadingsCollapsed}
+                  label={allTocHeadingsCollapsed ? "展开全部" : "收缩全部"}
+                  disabled={collapsibleTocHeadingIndexes.length === 0}
+                >
                   <List className="h-4 w-4" />
                 </ToolbarButton>
               </div>
-              <ul className="pl-4">
-                {headings.length === 0 && (
-                  <li className="text-xs text-muted-foreground">暂无目录</li>
-                )}
-                {visibleTocHeadings.map((heading, i) => {
-                  const active = heading.index === activeTocHeadingIndex
-                  return (
-                    <li key={`${heading.index}-${i}`}>
-                      <div
-                        className={cn(
-                          "flex items-center gap-1.5",
-                          heading.level === 2 && "pl-6",
-                          heading.level >= 3 && "pl-12",
-                        )}
-                      >
-                        {heading.hasChildren ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleTocHeading(heading.index)}
-                            aria-label={collapsedTocHeadingIds.has(heading.index) ? "展开子标题" : "收起子标题"}
-                            title={collapsedTocHeadingIds.has(heading.index) ? "展开子标题" : "收起子标题"}
-                            className={cn(
-                              "flex h-5 w-4 shrink-0 items-center justify-center text-foreground/50 transition-colors hover:text-foreground",
-                              active && "text-foreground",
-                            )}
-                          >
-                            {collapsedTocHeadingIds.has(heading.index) ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                          </button>
-                        ) : (
-                          <span className="h-5 w-4 shrink-0" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleTocClick(heading.index)}
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
+                <ul className="pb-24 pl-4">
+                  {headings.length === 0 && (
+                    <li className="text-xs text-muted-foreground">暂无目录</li>
+                  )}
+                  {visibleTocHeadings.map((heading, i) => {
+                    const active = heading.index === activeTocHeadingIndex
+                    return (
+                      <li key={`${heading.index}-${i}`}>
+                        <div
                           className={cn(
-                            "min-w-0 flex-1 truncate py-0.5 text-left text-[15px] leading-6 text-foreground/70 transition-colors hover:text-foreground",
-                            heading.level <= 1 && "font-medium",
-                            active && "font-semibold text-foreground",
+                            "flex items-center gap-1.5",
+                            heading.level === 2 && "pl-6",
+                            heading.level >= 3 && "pl-12",
                           )}
                         >
-                          {stripHtml(heading.text)}
-                        </button>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
+                          {heading.hasChildren ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleTocHeading(heading.index)}
+                              aria-label={collapsedTocHeadingIds.has(heading.index) ? "展开子标题" : "收起子标题"}
+                              title={collapsedTocHeadingIds.has(heading.index) ? "展开子标题" : "收起子标题"}
+                              className={cn(
+                                "flex h-5 w-4 shrink-0 items-center justify-center text-foreground/50 transition-colors hover:text-foreground",
+                                active && "text-foreground",
+                              )}
+                            >
+                              {collapsedTocHeadingIds.has(heading.index) ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                            </button>
+                          ) : (
+                            <span className="h-5 w-4 shrink-0" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleTocClick(heading.index)}
+                            className={cn(
+                              "min-w-0 flex-1 truncate py-0.5 text-left text-[15px] leading-6 text-foreground/70 transition-colors hover:text-foreground",
+                              heading.level <= 1 && "font-medium",
+                              active && "font-semibold text-foreground",
+                            )}
+                          >
+                            {stripHtml(heading.text)}
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
             </>
           ) : (
             <div className="group relative flex h-full min-h-[280px] items-center">
