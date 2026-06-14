@@ -458,6 +458,18 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     return () => window.removeEventListener("keydown", handleShortcut)
   }, [editingMode, note, undoBlocks])
 
+  const getListGroupIndexes = useCallback((index: number, source: NoteBlock[] = blocksRef.current) => {
+    if (!isListBlock(source[index])) return [index]
+
+    let start = index
+    while (start > 0 && isListBlock(source[start - 1])) start -= 1
+
+    let end = index + 1
+    while (end < source.length && isListBlock(source[end])) end += 1
+
+    return Array.from({ length: end - start }, (_, offset) => start + offset)
+  }, [])
+
   const deleteBlockIndexes = useCallback((indexes: Set<number>) => {
     if (!note || indexes.size === 0) return
     const current = readBlocksFromDom()
@@ -491,11 +503,16 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
 
   const getActionBlockIndexes = useCallback((index: number) => {
     const currentLength = blocksRef.current.length
-    const indexes = selectedBlockIndexes.has(index) ? Array.from(selectedBlockIndexes) : [index]
+    const current = blocksRef.current
+    const indexes = selectedBlockIndexes.has(index)
+      ? Array.from(selectedBlockIndexes)
+      : isListBlock(current[index])
+        ? getListGroupIndexes(index, current)
+        : [index]
     return Array.from(new Set(indexes))
       .filter((item) => item >= 0 && item < currentLength)
       .sort((a, b) => a - b)
-  }, [selectedBlockIndexes])
+  }, [getListGroupIndexes, selectedBlockIndexes])
 
   const getBlocksClipboardData = useCallback((indexes: number[]) => {
     const current = readBlocksFromDom()
@@ -767,7 +784,13 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     const currentKeys = blockKeys.length === current.length
       ? [...blockKeys]
       : current.map(() => makeBlockKey())
-    const movingIndexes = (selectedBlockIndexes.has(fromIndex) ? Array.from(selectedBlockIndexes) : [fromIndex])
+    const movingIndexes = (
+      selectedBlockIndexes.has(fromIndex)
+        ? Array.from(selectedBlockIndexes)
+        : isListBlock(current[fromIndex])
+          ? getListGroupIndexes(fromIndex, current)
+          : [fromIndex]
+    )
       .filter((index) => index >= 0 && index < current.length)
       .sort((a, b) => a - b)
     const movingIndexSet = new Set(movingIndexes)
@@ -787,7 +810,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     lastSelectedBlockIndexRef.current = targetIndex
     activeBlockRef.current = targetIndex
     setActiveBlockIndex(targetIndex)
-  }, [applyBlockKeys, blockKeys, commitBlocks, makeBlockKey, note, readBlocksFromDom, selectedBlockIndexes])
+  }, [applyBlockKeys, blockKeys, commitBlocks, getListGroupIndexes, makeBlockKey, note, readBlocksFromDom, selectedBlockIndexes])
 
   const getDragInsertIndex = useCallback((clientY: number, container: HTMLElement) => {
     const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-editor-row-index]"))
@@ -2032,13 +2055,19 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                 const isColumns = block.type === "columns"
                 const isToggle = block.type === "toggle"
                 const listIndent = isListBlock(block) ? getBlockIndent(block) : 0
+                const isListItem = isListBlock(block)
+                const listGroupIndexes = isListItem ? getListGroupIndexes(i, blocks) : [i]
+                const isListGroupStart = isListItem && listGroupIndexes[0] === i
+                const isListGroupEnd = isListItem && listGroupIndexes[listGroupIndexes.length - 1] === i
+                const showListBlockControls = !isListItem || isListGroupStart
                 const toggleChildLayout = toggleChildLayouts.get(i)
                 const toggleHasBody = isToggle && (toggleBodyCounts.get(i) ?? 0) > 0
                 const toggleExpandedWithBody = isToggle && !block.collapsed && toggleHasBody
                 const headingLevel = isHeading ? getHeadingLevel(block) : 1
                 const orderedNumber = isOrdered ? getOrderedListNumber(blocks, i) : 0
                 const isBlockSelected = selectedBlockIndexes.has(i)
-                const showBlockHoverSurface = !isBlockSelected && handleHoverIndex === i
+                const listGroupSelected = isListItem && listGroupIndexes.every((index) => selectedBlockIndexes.has(index))
+                const showBlockHoverSurface = !isListItem && !isBlockSelected && handleHoverIndex === i
                 const showHeadingMarker = isHeading && (activeBlockIndex === i || isBlockSelected)
                 const showInsertBefore = dragInsertIndex === i
                 const showInsertAfter = dragInsertIndex === blocks.length && i === blocks.length - 1
@@ -2079,8 +2108,14 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                       "group relative flex min-h-7 min-w-0 max-w-full items-start gap-2 rounded-[8px] transition-colors",
                       editingMode && "py-1",
                       !editingMode && "py-0.5",
+                      isListItem && !isListGroupStart && (editingMode ? "-mt-4" : "-mt-2"),
                       showBlockHoverSurface && "bg-card/70 dark:bg-white/[0.04]",
                       isBlockSelected && "bg-[#dcecff]/85 dark:bg-[#173b60]/80",
+                      isListItem && listGroupSelected && [
+                        "rounded-none",
+                        isListGroupStart && "rounded-t-[8px]",
+                        isListGroupEnd && "rounded-b-[8px]",
+                      ],
                       isToggle && "bg-card/80 px-2 py-2 dark:bg-white/[0.04]",
                       toggleExpandedWithBody && "rounded-b-none pb-1",
                       toggleChildLayout && [
@@ -2094,7 +2129,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                     )}
                   >
                     {showInsertBefore && <BlockInsertIndicator />}
-                    {editingMode && (
+                    {editingMode && showListBlockControls && (
                       <span
                         data-editor-control="true"
                         onMouseDown={(event) => startBlockRangeSelection(i, event)}
@@ -2102,7 +2137,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                         className="absolute -left-28 top-0 z-[1] h-full w-28 cursor-default"
                       />
                     )}
-                    {editingMode && (
+                    {editingMode && showListBlockControls && (
                       <span
                         data-editor-control="true"
                         onMouseDown={(event) => startBlockRangeSelection(i, event)}
@@ -2110,14 +2145,23 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                         className="absolute -right-24 top-0 z-[1] h-full w-20 cursor-default"
                       />
                     )}
-                    {editingMode && (
+                    {editingMode && showListBlockControls && (
                       <button
                         type="button"
                         data-editor-control="true"
                         data-block-menu-trigger="true"
                         draggable
                         onClick={(event) => {
-                          selectBlock(i, event)
+                          if (isListItem) {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            activeBlockRef.current = i
+                            setActiveBlockIndex(i)
+                            setSelectedBlockIndexes(new Set(listGroupIndexes))
+                            lastSelectedBlockIndexRef.current = listGroupIndexes[listGroupIndexes.length - 1] ?? i
+                          } else {
+                            selectBlock(i, event)
+                          }
                           setBlockMenuIndex((current) => current === i ? null : i)
                           setBlockTransformMenuOpen(false)
                         }}
@@ -2140,10 +2184,15 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                           document.body.appendChild(ghost)
                           event.dataTransfer.setDragImage(ghost, 0, 0)
                           window.setTimeout(() => ghost.remove(), 0)
-                          if (!selectedBlockIndexes.has(i)) {
+                          if (isListItem) {
+                            setSelectedBlockIndexes(new Set(listGroupIndexes))
+                            lastSelectedBlockIndexRef.current = listGroupIndexes[listGroupIndexes.length - 1] ?? i
+                          } else if (!selectedBlockIndexes.has(i)) {
                             setSelectedBlockIndexes(new Set([i]))
+                            lastSelectedBlockIndexRef.current = i
+                          } else {
+                            lastSelectedBlockIndexRef.current = i
                           }
-                          lastSelectedBlockIndexRef.current = i
                           setHandleHoverIndex(null)
                           dragInsertIndexRef.current = i
                           setDragInsertIndex(i)
@@ -2165,7 +2214,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                         <GripVertical className="h-4 w-4" />
                       </button>
                     )}
-                    {editingMode && blockMenuIndex === i && (
+                    {editingMode && showListBlockControls && blockMenuIndex === i && (
                       <BlockActionMenu
                         menuRef={blockMenuRef}
                         block={block}
