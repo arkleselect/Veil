@@ -3247,6 +3247,14 @@ function ImageBlock({
       ref={refCallback}
       data-editor-block="true"
       tabIndex={-1}
+      onMouseDown={(event) => {
+        if (!editingMode || event.button !== 0) return
+        const target = event.target
+        if (target instanceof Element && target.closest('[data-image-frame="true"]')) return
+        event.preventDefault()
+        event.stopPropagation()
+        onInsertAfter()
+      }}
       onKeyDown={(event) => {
         if (!editingMode || event.key !== "Enter") return
         event.preventDefault()
@@ -3255,6 +3263,7 @@ function ImageBlock({
       className="group/image relative flex min-w-0 flex-1 justify-center outline-none"
     >
       <div
+        data-image-frame="true"
         className="relative block max-w-full overflow-hidden rounded-[8px] border border-transparent bg-transparent transition-[border-color] duration-150 ease-out group-hover/image:border-black/[0.08] dark:group-hover/image:border-white/[0.12]"
       >
         <img
