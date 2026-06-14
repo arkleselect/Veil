@@ -1,6 +1,8 @@
 import type { HeadingLevel, Note, NoteBlock } from "@/lib/notes-data"
 import { computeNoteContentHash } from "@/lib/note-version"
 
+const MAX_LIST_INDENT = 6
+
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 }
@@ -107,6 +109,44 @@ function normalizeHeadingLevel(value: unknown): HeadingLevel {
   return value === 2 || value === 3 ? value : 1
 }
 
+function normalizeListIndent(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(MAX_LIST_INDENT, Math.trunc(value)))
+    : 0
+}
+
+function markdownListIndent(line: string): number {
+  const leading = line.match(/^[\t ]*/)?.[0] ?? ""
+  return normalizeListIndent(leading.replace(/\t/g, "  ").length / 2)
+}
+
+function listIndentProps(indent: number): Pick<NoteBlock, "indent"> {
+  return indent > 0 ? { indent } : {}
+}
+
+function isListBlock(block: NoteBlock | undefined): boolean {
+  return block?.type === "bullet" || block?.type === "ordered" || block?.type === "todo"
+}
+
+function orderedListNumberAt(blocks: NoteBlock[], index: number): number {
+  const block = blocks[index]
+  if (block?.type !== "ordered") return 0
+  const indent = normalizeListIndent(block.indent)
+  let count = 0
+
+  for (let i = index; i >= 0; i -= 1) {
+    const current = blocks[i]
+    if (!isListBlock(current)) break
+    const currentIndent = normalizeListIndent(current.indent)
+    if (currentIndent < indent) break
+    if (currentIndent > indent) continue
+    if (current.type !== "ordered") break
+    count += 1
+  }
+
+  return Math.max(1, count)
+}
+
 function headingBlock(text: string, level: HeadingLevel): NoteBlock {
   return level === 1 ? { type: "heading", text } : { type: "heading", text, level }
 }
@@ -176,20 +216,22 @@ deletedAt: ${note.deletedAt ?? ""}
 ---
 
 `
-  for (const block of blocks) {
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index]
     const text = block.text
+    const listPrefix = "  ".repeat(normalizeListIndent(block.indent))
     switch (block.type) {
       case "heading":
         md += `${"#".repeat(normalizeHeadingLevel(block.level))} ${text}\n\n`
         break
       case "bullet":
-        md += `- ${text}\n`
+        md += `${listPrefix}- ${text}\n`
         break
       case "todo":
-        md += `- [${block.checked ? "x" : " "}] ${text}\n`
+        md += `${listPrefix}- [${block.checked ? "x" : " "}] ${text}\n`
         break
       case "ordered":
-        md += `1. ${text}\n`
+        md += `${listPrefix}${orderedListNumberAt(blocks, index)}. ${text}\n`
         break
       case "quote":
         md += `> ${text}\n\n`
@@ -303,19 +345,20 @@ export function markdownToNote(md: string, id?: string): Note {
       continue
     }
 
+    const indent = markdownListIndent(line)
     const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/)
     if (headingMatch) {
       blocks.push(headingBlock(markdownImagesToHtml(headingMatch[2]), headingMatch[1].length as HeadingLevel))
     } else if (trimmed.startsWith("- [x] ") || trimmed.startsWith("- [X] ")) {
-      blocks.push({ type: "todo", text: markdownImagesToHtml(trimmed.slice(6)), checked: true })
+      blocks.push({ type: "todo", text: markdownImagesToHtml(trimmed.slice(6)), checked: true, ...listIndentProps(indent) })
     } else if (trimmed.startsWith("- [ ] ")) {
-      blocks.push({ type: "todo", text: markdownImagesToHtml(trimmed.slice(6)), checked: false })
+      blocks.push({ type: "todo", text: markdownImagesToHtml(trimmed.slice(6)), checked: false, ...listIndentProps(indent) })
     } else if (trimmed.startsWith("- ")) {
-      blocks.push({ type: "bullet", text: markdownImagesToHtml(trimmed.slice(2)) })
+      blocks.push({ type: "bullet", text: markdownImagesToHtml(trimmed.slice(2)), ...listIndentProps(indent) })
     } else if (trimmed.startsWith("> ")) {
       blocks.push({ type: "quote", text: markdownImagesToHtml(trimmed.slice(2)) })
-    } else if (trimmed.match(/^\d+\.\s/)) {
-      blocks.push({ type: "ordered", text: markdownImagesToHtml(trimmed.replace(/^\d+\.\s/, "")) })
+    } else if (trimmed.match(/^\d+[.)]\s/)) {
+      blocks.push({ type: "ordered", text: markdownImagesToHtml(trimmed.replace(/^\d+[.)]\s/, "")), ...listIndentProps(indent) })
     } else {
       blocks.push({ type: "paragraph", text: markdownImagesToHtml(trimmed) })
     }

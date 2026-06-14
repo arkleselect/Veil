@@ -127,6 +127,49 @@ starred: false
     ])
   })
 
+  it("preserves list indentation and ordered list groups", () => {
+    const note: Note = {
+      id: "list-note",
+      title: "Lists",
+      excerpt: "",
+      notebook: "Inbox",
+      notebookIcon: "BookOpen",
+      date: "2026-06-08",
+      starred: false,
+      tags: [],
+      blocks: [
+        { type: "ordered", text: "One" },
+        { type: "ordered", text: "Child one", indent: 1 },
+        { type: "ordered", text: "Child two", indent: 1 },
+        { type: "ordered", text: "Two" },
+        { type: "paragraph", text: "Break" },
+        { type: "ordered", text: "Restart" },
+        { type: "bullet", text: "Nested bullet", indent: 2 },
+      ],
+      version: 1,
+      contentHash: "",
+      createdAt: "2026-06-08T01:02:03.000Z",
+      updatedAt: "2026-06-08T04:05:06.000Z",
+    }
+
+    const markdown = noteToMarkdown(note)
+    const decoded = markdownToNote(`${markdown}\n  1) Imported child`, note.id)
+
+    expect(markdown).toContain("1. One\n  1. Child one\n  2. Child two\n2. Two")
+    expect(markdown).toContain("Break\n\n1. Restart")
+    expect(markdown).toContain("    - Nested bullet")
+    expect(decoded.blocks).toEqual([
+      { type: "ordered", text: "One" },
+      { type: "ordered", text: "Child one", indent: 1 },
+      { type: "ordered", text: "Child two", indent: 1 },
+      { type: "ordered", text: "Two" },
+      { type: "paragraph", text: "Break" },
+      { type: "ordered", text: "Restart" },
+      { type: "bullet", text: "Nested bullet", indent: 2 },
+      { type: "ordered", text: "Imported child", indent: 1 },
+    ])
+  })
+
   it("round-trips fenced code blocks as literal text", () => {
     const note: Note = {
       id: "code-note",

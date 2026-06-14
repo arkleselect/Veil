@@ -35,6 +35,7 @@ export const noteBlockSchema = z.object({
   text: z.string().max(50_000, "单个内容块过长"),
   checked: z.boolean().optional(),
   level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  indent: z.number().int().min(0).max(6).optional(),
   collapsed: z.boolean().optional(),
   showLineNumbers: z.boolean().optional(),
   toggleId: z.string().trim().min(1).max(120).optional(),

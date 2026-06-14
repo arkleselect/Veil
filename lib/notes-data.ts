@@ -18,6 +18,7 @@ export interface NoteBlock {
   text: string
   checked?: boolean
   level?: HeadingLevel
+  indent?: number
   collapsed?: boolean
   showLineNumbers?: boolean
   toggleId?: string

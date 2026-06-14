@@ -90,11 +90,15 @@ interface ImageBlockData {
   alt: string
 }
 
+type ListBlockType = Extract<NoteBlock["type"], "bullet" | "ordered" | "todo">
+
 const EDITOR_ARTICLE_WIDTH = "clamp(42rem, 72%, 54rem)"
 const EDITOR_ARTICLE_MAX_WIDTH = "calc(100% - 3rem)"
 const TOC_DEFAULT_WIDTH = 336
 const TOC_MIN_WIDTH = 240
 const TOC_MAX_WIDTH = 460
+const LIST_INDENT_STEP_PX = 24
+const MAX_LIST_INDENT = 6
 
 export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onToggleNoteList, onUpdateNote }: EditorProps) {
   const { toast } = useToast()
@@ -501,7 +505,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
 
     const selectedBlocks = selectedIndexes.map((index) => ({
       block: current[index],
-      orderedNumber: current.slice(0, index + 1).filter((block) => block.type === "ordered").length,
+      orderedNumber: getOrderedListNumber(current, index),
     }))
 
     return {
@@ -592,20 +596,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     const indexSet = new Set(normalizedIndexes)
     const next = current.map((block, index) => {
       if (!indexSet.has(index)) return block
-      if (type === "heading") {
-        const { checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = block
-        return { ...rest, type, level: level ?? 1 }
-      }
-      if (type === "todo") {
-        const { level: _level, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = block
-        return { ...rest, type, checked: block.checked ?? false }
-      }
-      if (type === "code") {
-        const { level: _level, checked: _checked, collapsed: _collapsed, toggleId: _toggleId, ...rest } = block
-        return { ...rest, type, showLineNumbers: block.showLineNumbers ?? false }
-      }
-      const { level: _level, checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = block
-      return { ...rest, type }
+      return toTypedBlock(block, type, block.text, { level })
     })
     commitBlocks(note.id, next)
     setSelectedBlockIndexes(new Set(normalizedIndexes))
@@ -822,7 +813,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       e.currentTarget.innerHTML = ""
       if (!note) return
       const current = readBlocksFromDom()
-      const next = current.map((block, i) => (i === index ? { ...block, type: "code" as const, text: "" } : block))
+      const next = current.map((block, i) => (i === index ? toTypedBlock(block, "code", "") : block))
       commitBlocks(note.id, next)
       return
     }
@@ -833,7 +824,27 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       const level = headingShortcut[1].length as HeadingLevel
       if (!note) return
       const current = readBlocksFromDom()
-      const next = current.map((block, i) => (i === index ? { ...block, type: "heading" as const, level, text: "" } : block))
+      const next = current.map((block, i) => (i === index ? toTypedBlock(block, "heading", "", { level }) : block))
+      commitBlocks(note.id, next)
+      return
+    }
+
+    const bulletShortcut = plainText.match(/^[-*+](?: |\u00a0)$/)
+    if (bulletShortcut) {
+      e.currentTarget.innerHTML = ""
+      if (!note) return
+      const current = readBlocksFromDom()
+      const next = current.map((block, i) => (i === index ? toTypedBlock(block, "bullet", "") : block))
+      commitBlocks(note.id, next)
+      return
+    }
+
+    const orderedShortcut = plainText.match(/^\d+[.)](?: |\u00a0)$/)
+    if (orderedShortcut) {
+      e.currentTarget.innerHTML = ""
+      if (!note) return
+      const current = readBlocksFromDom()
+      const next = current.map((block, i) => (i === index ? toTypedBlock(block, "ordered", "") : block))
       commitBlocks(note.id, next)
       return
     }
@@ -883,6 +894,31 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
       return
     }
 
+    if (e.key === "Tab") {
+      const current = readBlocksFromDom()
+      const selectedIndexes = selectedBlockIndexes.has(index)
+        ? Array.from(selectedBlockIndexes)
+        : [index]
+      const listIndexes = selectedIndexes
+        .filter((blockIndex) => blockIndex >= 0 && blockIndex < current.length && isListBlock(current[blockIndex]))
+
+      if (listIndexes.length > 0) {
+        if (!note) return
+        e.preventDefault()
+        const direction = e.shiftKey ? -1 : 1
+        const next = current.map((block, blockIndex) => {
+          if (!listIndexes.includes(blockIndex) || !isListBlock(block)) return block
+          return withListIndent(block, getBlockIndent(block) + direction)
+        })
+        commitBlocks(note.id, next)
+        if (selectedBlockIndexes.has(index)) {
+          setSelectedBlockIndexes(new Set(listIndexes))
+          lastSelectedBlockIndexRef.current = listIndexes[listIndexes.length - 1] ?? null
+        }
+        return
+      }
+    }
+
     if (e.key === "Enter" && blocksRef.current[index]?.type === "code" && !e.metaKey && !e.ctrlKey) {
       e.preventDefault()
       document.execCommand("insertText", false, "\n")
@@ -912,10 +948,18 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
           text: split.afterHtml,
           ...(block.toggleId ? { toggleParentId: block.toggleId } : {}),
         })
-      } else if (split.atStart) {
+      } else if (isListBlock(block) && isEmptyHtml(split.beforeHtml) && isEmptyHtml(split.afterHtml)) {
         next[index] = { type: "paragraph", text: "", ...(parentId ? { toggleParentId: parentId } : {}) }
+        focusIndex = index
+      } else if (split.atStart) {
+        next[index] = isListBlock(block)
+          ? listContinuationBlock(block, "")
+          : { type: "paragraph", text: "", ...(parentId ? { toggleParentId: parentId } : {}) }
         next.splice(index + 1, 0, { ...current[index], text: split.afterHtml })
         focusIndex = index + 1
+      } else if (isListBlock(block)) {
+        next[index] = { ...block, text: split.beforeHtml }
+        next.splice(index + 1, 0, listContinuationBlock(block, split.afterHtml))
       } else {
         next[index] = { ...next[index], text: split.beforeHtml }
         next.splice(index + 1, 0, { type: "paragraph", text: split.afterHtml, ...(parentId ? { toggleParentId: parentId } : {}) })
@@ -1088,23 +1132,10 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     const current = readBlocksFromDom()
     const next = current.map((b, i) => {
       if (i !== index) return b
-      if (type === "heading") {
-        const { checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = b
-        return { ...rest, type, level: 1 as HeadingLevel }
-      }
-      if (type === "todo") {
-        const { level: _level, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = b
-        return { ...rest, type, checked: b.checked ?? false }
-      }
-      if (type === "code") {
-        const { level: _level, checked: _checked, collapsed: _collapsed, toggleId: _toggleId, ...rest } = b
-        return { ...rest, type, showLineNumbers: b.showLineNumbers ?? false }
-      }
       if (type === "toggle") {
         return toToggleBlock(b, b.toggleId ?? makeToggleId())
       }
-      const { level: _level, checked: _checked, collapsed: _collapsed, showLineNumbers: _showLineNumbers, toggleId: _toggleId, ...rest } = b
-      return { ...rest, type }
+      return toTypedBlock(b, type)
     })
     commitBlocks(note.id, next)
   }, [commitBlocks, note, readBlocksFromDom])
@@ -2000,11 +2031,12 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                 const isHighlight = block.type === "highlight"
                 const isColumns = block.type === "columns"
                 const isToggle = block.type === "toggle"
+                const listIndent = isListBlock(block) ? getBlockIndent(block) : 0
                 const toggleChildLayout = toggleChildLayouts.get(i)
                 const toggleHasBody = isToggle && (toggleBodyCounts.get(i) ?? 0) > 0
                 const toggleExpandedWithBody = isToggle && !block.collapsed && toggleHasBody
                 const headingLevel = isHeading ? getHeadingLevel(block) : 1
-                const orderedNumber = isOrdered ? blocks.filter((b, j) => j <= i && b.type === "ordered").length : 0
+                const orderedNumber = isOrdered ? getOrderedListNumber(blocks, i) : 0
                 const isBlockSelected = selectedBlockIndexes.has(i)
                 const showBlockHoverSurface = !isBlockSelected && handleHoverIndex === i
                 const showHeadingMarker = isHeading && (activeBlockIndex === i || isBlockSelected)
@@ -2016,6 +2048,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                   <div
                     key={blockKeys[i] ?? i}
                     data-editor-row-index={i}
+                    style={listIndent > 0 ? { paddingLeft: listIndent * LIST_INDENT_STEP_PX } : undefined}
                     onMouseDown={(event) => {
                       if (!(event.target instanceof Element)) return
                       if (event.target.closest('[data-editor-control="true"]')) return
@@ -2163,7 +2196,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                       <span className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
                     )}
                     {isOrdered && (
-                      <span className="mt-[11px] min-w-[1.2em] shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                      <span className="mt-[11px] min-w-[1.8em] shrink-0 text-right text-xs tabular-nums text-muted-foreground">
                         {orderedNumber}.
                       </span>
                     )}
@@ -2711,12 +2744,13 @@ function splitPlainTextBlocks(value: string): string[] {
     return value.split(/\n\s*\n+/).map((item) => item.trim()).filter(Boolean)
   }
 
-  const lines = value.split("\n").map((line) => line.trim()).filter(Boolean)
+  const lines = value.split("\n").filter((line) => line.trim())
   return lines.length > 1 ? lines : [value]
 }
 
 function markdownTextToBlock(value: string): NoteBlock {
   const text = value.trim()
+  const indent = markdownListIndent(value)
   const imageMatch = text.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/)
   if (imageMatch) {
     const src = normalizeImageBlockSrc(imageMatch[2])
@@ -2725,11 +2759,10 @@ function markdownTextToBlock(value: string): NoteBlock {
 
   const todoMatch = text.match(/^[-*+]\s+\[([ xX])\]\s+([\s\S]+)$/)
   if (todoMatch) {
-    return {
-      type: "todo",
-      text: plainTextBlockHtml(todoMatch[2]),
+    return listBlock("todo", plainTextBlockHtml(todoMatch[2]), {
       checked: todoMatch[1].toLowerCase() === "x",
-    }
+      indent,
+    })
   }
 
   const headingMatch = text.match(/^(#{1,3})\s+([\s\S]+)$/)
@@ -2742,10 +2775,10 @@ function markdownTextToBlock(value: string): NoteBlock {
   }
 
   const bulletMatch = text.match(/^[-*+]\s+([\s\S]+)$/)
-  if (bulletMatch) return { type: "bullet", text: plainTextBlockHtml(bulletMatch[1]) }
+  if (bulletMatch) return listBlock("bullet", plainTextBlockHtml(bulletMatch[1]), { indent })
 
   const orderedMatch = text.match(/^\d+[.)]\s+([\s\S]+)$/)
-  if (orderedMatch) return { type: "ordered", text: plainTextBlockHtml(orderedMatch[1]) }
+  if (orderedMatch) return listBlock("ordered", plainTextBlockHtml(orderedMatch[1]), { indent })
 
   if (text.startsWith(">")) {
     return {
@@ -2810,6 +2843,18 @@ function htmlToImageAwareBlocks(root: ParentNode): NoteBlock[] {
       return
     }
 
+    if (tagName === "ul" || tagName === "ol") {
+      flush()
+      appendListNode(node, tagName === "ol" ? "ordered" : "bullet", 0)
+      return
+    }
+
+    if (tagName === "li") {
+      flush()
+      appendListItem(node, "bullet", 0)
+      return
+    }
+
     const isBlock = BLOCK_TAGS.has(tagName)
     if (isBlock) flush()
 
@@ -2823,6 +2868,42 @@ function htmlToImageAwareBlocks(root: ParentNode): NoteBlock[] {
     }
 
     if (isBlock) flush()
+  }
+
+  const inlineNodeHtml = (node: ChildNode): string => {
+    if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.textContent || "")
+    if (!(node instanceof HTMLElement)) return ""
+
+    const tagName = node.tagName.toLowerCase()
+    if (tagName === "ul" || tagName === "ol") return ""
+    if (tagName === "img") return normalizeImageElementHtml(node) ?? ""
+    if (tagName === "br") return "<br>"
+
+    const childHtml = Array.from(node.childNodes).map(inlineNodeHtml).join("")
+    const inlineTag = INLINE_TAGS.has(tagName) ? inlineTagPair(node, tagName) : null
+    if (inlineTag) return `${inlineTag.open}${childHtml}${inlineTag.close}`
+    return childHtml
+  }
+
+  const appendListItem = (item: HTMLElement, type: ListBlockType, indent: number) => {
+    const text = Array.from(item.childNodes).map(inlineNodeHtml).join("").trim()
+    blocks.push(listBlock(type, text, { indent }))
+
+    Array.from(item.children).forEach((child) => {
+      const tagName = child.tagName.toLowerCase()
+      if (tagName !== "ul" && tagName !== "ol") return
+      appendListNode(child as HTMLElement, tagName === "ol" ? "ordered" : "bullet", indent + 1)
+    })
+  }
+
+  const appendListNode = (list: HTMLElement, type: ListBlockType, indent: number) => {
+    Array.from(list.children).forEach((child) => {
+      if (child.tagName.toLowerCase() === "li") {
+        appendListItem(child as HTMLElement, type, indent)
+      } else {
+        appendNode(child)
+      }
+    })
   }
 
   root.childNodes.forEach(appendNode)
@@ -2906,6 +2987,109 @@ function dataUrlToImageFile(dataUrl: string, name: string): File | null {
   } catch {
     return null
   }
+}
+
+function isListType(type: NoteBlock["type"]): type is ListBlockType {
+  return type === "bullet" || type === "ordered" || type === "todo"
+}
+
+function isListBlock(block: NoteBlock | undefined): block is NoteBlock & { type: ListBlockType } {
+  return !!block && isListType(block.type)
+}
+
+function getBlockIndent(block: NoteBlock | undefined): number {
+  if (!block || typeof block.indent !== "number" || !Number.isFinite(block.indent)) return 0
+  return Math.max(0, Math.min(MAX_LIST_INDENT, Math.trunc(block.indent)))
+}
+
+function withListIndent<T extends NoteBlock>(block: T, indent: number): T {
+  const nextIndent = Math.max(0, Math.min(MAX_LIST_INDENT, Math.trunc(indent)))
+  if (nextIndent <= 0) {
+    const { indent: _indent, ...rest } = block
+    return rest as T
+  }
+  return { ...block, indent: nextIndent }
+}
+
+function listBlock(
+  type: ListBlockType,
+  text: string,
+  options: { indent?: number; toggleParentId?: string; checked?: boolean } = {},
+): NoteBlock {
+  const block: NoteBlock = {
+    type,
+    text,
+    ...(options.toggleParentId ? { toggleParentId: options.toggleParentId } : {}),
+  }
+  if (type === "todo") block.checked = options.checked ?? false
+  return withListIndent(block, options.indent ?? 0)
+}
+
+function listContinuationBlock(block: NoteBlock & { type: ListBlockType }, text: string): NoteBlock {
+  return listBlock(block.type, text, {
+    indent: getBlockIndent(block),
+    toggleParentId: block.toggleParentId,
+    checked: block.type === "todo" ? false : undefined,
+  })
+}
+
+function toTypedBlock(
+  block: NoteBlock,
+  type: NoteBlock["type"],
+  text = block.text,
+  options: { level?: HeadingLevel } = {},
+): NoteBlock {
+  if (type === "toggle") return toToggleBlock({ ...block, text }, block.toggleId ?? makeToggleId())
+
+  const {
+    level: _level,
+    checked: _checked,
+    collapsed: _collapsed,
+    showLineNumbers: _showLineNumbers,
+    toggleId: _toggleId,
+    indent: _indent,
+    ...rest
+  } = block
+
+  if (type === "heading") return { ...rest, type, text, level: options.level ?? 1 }
+  if (type === "todo") return listBlock("todo", text, {
+    indent: getBlockIndent(block),
+    toggleParentId: block.toggleParentId,
+    checked: block.checked ?? false,
+  })
+  if (type === "bullet" || type === "ordered") {
+    return listBlock(type, text, {
+      indent: getBlockIndent(block),
+      toggleParentId: block.toggleParentId,
+    })
+  }
+  if (type === "code") return { ...rest, type, text, showLineNumbers: block.showLineNumbers ?? false }
+  return { ...rest, type, text }
+}
+
+function markdownListIndent(value: string): number {
+  const match = value.match(/^[\t ]*/)
+  const width = (match?.[0] ?? "").replace(/\t/g, "  ").length
+  return Math.max(0, Math.min(MAX_LIST_INDENT, Math.floor(width / 2)))
+}
+
+function getOrderedListNumber(blocks: NoteBlock[], index: number): number {
+  const block = blocks[index]
+  if (block?.type !== "ordered") return 0
+
+  const indent = getBlockIndent(block)
+  let count = 0
+  for (let i = index; i >= 0; i -= 1) {
+    const current = blocks[i]
+    if (!isListBlock(current)) break
+
+    const currentIndent = getBlockIndent(current)
+    if (currentIndent < indent) break
+    if (currentIndent > indent) continue
+    if (current.type !== "ordered") break
+    count += 1
+  }
+  return Math.max(1, count)
 }
 
 function fragmentToHtml(fragment: DocumentFragment): string {
@@ -3129,6 +3313,7 @@ function toToggleBlock(block: NoteBlock, toggleId: string): NoteBlock {
   const {
     checked: _checked,
     level: _level,
+    indent: _indent,
     showLineNumbers: _showLineNumbers,
     toggleParentId: _toggleParentId,
     ...rest
@@ -3224,10 +3409,11 @@ function getCodeLineCount(value: string): number {
 
 function blockToClipboardText(block: NoteBlock, orderedNumber: number): string {
   const text = stripHtml(block.text).replace(/\u00a0/g, " ").trimEnd()
+  const indent = "  ".repeat(getBlockIndent(block))
 
-  if (block.type === "bullet") return text ? `- ${text}` : "-"
-  if (block.type === "ordered") return text ? `${orderedNumber}. ${text}` : `${orderedNumber}.`
-  if (block.type === "todo") return `${block.checked ? "[x]" : "[ ]"} ${text}`.trimEnd()
+  if (block.type === "bullet") return text ? `${indent}- ${text}` : `${indent}-`
+  if (block.type === "ordered") return text ? `${indent}${orderedNumber}. ${text}` : `${indent}${orderedNumber}.`
+  if (block.type === "todo") return `${indent}- [${block.checked ? "x" : " "}] ${text}`.trimEnd()
   if (block.type === "quote") return text ? `> ${text}` : ">"
   if (block.type === "code") return codeBlockText(block.text)
 
@@ -3242,8 +3428,9 @@ function blockToClipboardHtml(block: NoteBlock, orderedNumber: number): string {
     return `<h${level}>${html}</h${level}>`
   }
 
-  if (block.type === "bullet") return `<ul><li>${html}</li></ul>`
-  if (block.type === "ordered") return `<ol start="${orderedNumber}"><li>${html}</li></ol>`
+  const indentStyle = getBlockIndent(block) > 0 ? ` style="margin-left: ${getBlockIndent(block) * 1.5}em"` : ""
+  if (block.type === "bullet") return `<ul${indentStyle}><li>${html}</li></ul>`
+  if (block.type === "ordered") return `<ol start="${orderedNumber}"${indentStyle}><li>${html}</li></ol>`
   if (block.type === "todo") return `<p>${block.checked ? "☑" : "☐"} ${html}</p>`
   if (block.type === "quote") return `<blockquote>${html}</blockquote>`
   if (block.type === "code") return `<pre><code>${html}</code></pre>`
