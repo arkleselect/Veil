@@ -22,6 +22,24 @@ const SIDEBAR_OPEN_STORAGE_KEY = "veil-sidebar-open"
 const NOTE_LIST_OPEN_STORAGE_KEY = "veil-note-list-open"
 const ACTIVE_NAV_STORAGE_KEY = "veil-active-nav"
 const FAVORITE_NOTEBOOKS_STORAGE_KEY = "veil-favorite-notebook-ids"
+const NOTE_LIST_DEFAULT_WIDTH_CSS = "clamp(288px, 19vw, 360px)"
+const NOTE_LIST_DEFAULT_MIN_WIDTH = 288
+const NOTE_LIST_DEFAULT_MAX_WIDTH = 360
+const NOTE_LIST_RESIZE_MIN_WIDTH = 240
+const NOTE_LIST_RESIZE_MAX_WIDTH = 520
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function getDefaultNoteListWidth(): number {
+  if (typeof window === "undefined") return NOTE_LIST_DEFAULT_MIN_WIDTH
+  return Math.round(clampNumber(
+    window.innerWidth * 0.19,
+    NOTE_LIST_DEFAULT_MIN_WIDTH,
+    NOTE_LIST_DEFAULT_MAX_WIDTH,
+  ))
+}
 
 function localRepositoryAvailable(): boolean {
   return typeof window !== "undefined" && window.electronAPI?.runtime === "electron"
@@ -537,7 +555,7 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
   const [sidebarOpen, setSidebarOpen] = useState(() => storedBoolean(SIDEBAR_OPEN_STORAGE_KEY, true))
   const [noteListOpen, setNoteListOpen] = useState(() => storedBoolean(NOTE_LIST_OPEN_STORAGE_KEY, true))
   const [sidebarWidth, setSidebarWidth] = useState(240)
-  const [noteListWidth, setNoteListWidth] = useState(260)
+  const [noteListWidth, setNoteListWidth] = useState<number | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
   const [noteIds, setNoteIds] = useState<string[]>([])
   const [notesCursor, setNotesCursor] = useState<string | undefined>()
@@ -799,7 +817,7 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
     dragging.current = handle
     startX.current = e.clientX
     startSidebarWidth.current = sidebarWidth
-    startNoteListWidth.current = noteListWidth
+    startNoteListWidth.current = noteListWidth ?? getDefaultNoteListWidth()
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragging.current) return
@@ -807,7 +825,11 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
       if (dragging.current === "sidebar") {
         setSidebarWidth(Math.max(180, Math.min(400, startSidebarWidth.current + dx)))
       } else {
-        setNoteListWidth(Math.max(200, Math.min(500, startNoteListWidth.current + dx)))
+        setNoteListWidth(clampNumber(
+          startNoteListWidth.current + dx,
+          NOTE_LIST_RESIZE_MIN_WIDTH,
+          NOTE_LIST_RESIZE_MAX_WIDTH,
+        ))
       }
     }
 
@@ -1441,7 +1463,7 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
     <>
       {noteListOpen && (
         <>
-          <div style={{ width: noteListWidth }} className="min-w-0 shrink-0">
+          <div style={{ width: noteListWidth ?? NOTE_LIST_DEFAULT_WIDTH_CSS }} className="min-w-0 shrink-0">
             <NoteList
               notes={displayNotes}
               selectedId={selectedId}

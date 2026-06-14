@@ -92,11 +92,15 @@ interface ImageBlockData {
 
 const EDITOR_ARTICLE_WIDTH = "clamp(42rem, 72%, 54rem)"
 const EDITOR_ARTICLE_MAX_WIDTH = "calc(100% - 3rem)"
+const TOC_DEFAULT_WIDTH = 292
+const TOC_MIN_WIDTH = 240
+const TOC_MAX_WIDTH = 420
 
 export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onToggleNoteList, onUpdateNote }: EditorProps) {
   const { toast } = useToast()
   const [tocOpen, setTocOpen] = useState(true)
-  const [tocWidth, setTocWidth] = useState(224)
+  const [tocWidth, setTocWidth] = useState(TOC_DEFAULT_WIDTH)
+  const [activeTocHeadingIndex, setActiveTocHeadingIndex] = useState<number | null>(null)
   const [collapsedTocHeadingIds, setCollapsedTocHeadingIds] = useState<Set<number>>(new Set())
   const [editingMode, setEditingMode] = useState(true)
   const [readingProgress, setReadingProgress] = useState(0)
@@ -1533,7 +1537,7 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragging.current) return
-      setTocWidth(Math.max(160, Math.min(400, startWidth.current + startX.current - e.clientX)))
+      setTocWidth(Math.max(TOC_MIN_WIDTH, Math.min(TOC_MAX_WIDTH, startWidth.current + startX.current - e.clientX)))
     }
 
     const handleMouseUp = () => {
@@ -1584,16 +1588,36 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
     const el = scrollContainerRef.current
     if (!el) {
       setReadingProgress(0)
+      setActiveTocHeadingIndex(null)
       return
     }
 
     const maxScroll = el.scrollHeight - el.clientHeight
-    if (maxScroll <= 0) {
-      setReadingProgress(0)
-      return
-    }
+    setReadingProgress(maxScroll <= 0 ? 0 : Math.min(100, Math.max(0, (el.scrollTop / maxScroll) * 100)))
 
-    setReadingProgress(Math.min(100, Math.max(0, (el.scrollTop / maxScroll) * 100)))
+    const containerRect = el.getBoundingClientRect()
+    const activationTop = containerRect.top + Math.min(160, Math.max(96, el.clientHeight * 0.22))
+    let nextActive: number | null = null
+    let firstVisible: number | null = null
+
+    blocksRef.current.forEach((block, index) => {
+      if (block.type !== "heading") return
+      const headingEl = blockRefs.current[index]
+      if (!headingEl) return
+
+      const rect = headingEl.getBoundingClientRect()
+      if (firstVisible === null && rect.bottom >= containerRect.top && rect.top <= containerRect.bottom) {
+        firstVisible = index
+      }
+      if (rect.top <= activationTop) {
+        nextActive = index
+      }
+    })
+
+    setActiveTocHeadingIndex((prev) => {
+      const resolved = nextActive ?? firstVisible
+      return prev === resolved ? prev : resolved
+    })
   }, [])
 
   useEffect(() => {
@@ -2300,41 +2324,48 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                 {headings.length === 0 && (
                   <li className="text-xs text-muted-foreground">暂无目录</li>
                 )}
-                {visibleTocHeadings.map((heading, i) => (
-                  <li key={`${heading.index}-${i}`}>
-                    <div
-                      className={cn(
-                        "flex items-center gap-1.5",
-                        heading.level === 2 && "pl-6",
-                        heading.level >= 3 && "pl-12",
-                      )}
-                    >
-                      {heading.hasChildren ? (
-                        <button
-                          type="button"
-                          onClick={() => toggleTocHeading(heading.index)}
-                          aria-label={collapsedTocHeadingIds.has(heading.index) ? "展开子标题" : "收起子标题"}
-                          title={collapsedTocHeadingIds.has(heading.index) ? "展开子标题" : "收起子标题"}
-                          className="flex h-5 w-4 shrink-0 items-center justify-center text-muted-foreground/70 transition-colors hover:text-foreground"
-                        >
-                          {collapsedTocHeadingIds.has(heading.index) ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                        </button>
-                      ) : (
-                        <span className="h-5 w-4 shrink-0" />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleTocClick(heading.index)}
+                {visibleTocHeadings.map((heading, i) => {
+                  const active = heading.index === activeTocHeadingIndex
+                  return (
+                    <li key={`${heading.index}-${i}`}>
+                      <div
                         className={cn(
-                          "min-w-0 flex-1 truncate py-0.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground",
-                          heading.level <= 1 && "font-medium",
+                          "flex items-center gap-1.5",
+                          heading.level === 2 && "pl-6",
+                          heading.level >= 3 && "pl-12",
                         )}
                       >
-                        {stripHtml(heading.text)}
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                        {heading.hasChildren ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleTocHeading(heading.index)}
+                            aria-label={collapsedTocHeadingIds.has(heading.index) ? "展开子标题" : "收起子标题"}
+                            title={collapsedTocHeadingIds.has(heading.index) ? "展开子标题" : "收起子标题"}
+                            className={cn(
+                              "flex h-5 w-4 shrink-0 items-center justify-center text-foreground/50 transition-colors hover:text-foreground",
+                              active && "text-foreground",
+                            )}
+                          >
+                            {collapsedTocHeadingIds.has(heading.index) ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          </button>
+                        ) : (
+                          <span className="h-5 w-4 shrink-0" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleTocClick(heading.index)}
+                          className={cn(
+                            "min-w-0 flex-1 truncate py-0.5 text-left text-sm text-foreground/70 transition-colors hover:text-foreground",
+                            heading.level <= 1 && "font-medium",
+                            active && "font-semibold text-foreground",
+                          )}
+                        >
+                          {stripHtml(heading.text)}
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             </>
           ) : (
@@ -2353,36 +2384,46 @@ export function Editor({ note, sidebarOpen, noteListOpen, onToggleSidebar, onTog
                   <p className="text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">暂无目录</p>
                 ) : (
                   <ul className="flex flex-col gap-1">
-                    {tocHeadings.map((heading, i) => (
-                      <li key={`${heading.index}-${i}`}>
-                        <div className="flex w-full items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
-                          <span
+                    {tocHeadings.map((heading, i) => {
+                      const active = heading.index === activeTocHeadingIndex
+                      return (
+                        <li key={`${heading.index}-${i}`}>
+                          <div
                             className={cn(
-                              "h-1 shrink-0 rounded-full bg-muted-foreground/25 transition-all group-hover:bg-muted-foreground/40",
-                              heading.level <= 1 && "w-5",
-                              heading.level === 2 && "ml-3 w-4",
-                              heading.level >= 3 && "ml-6 w-3",
-                            )}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleTocClick(heading.index)}
-                            className="min-w-0 flex-1 text-left"
-                          >
-                          <span
-                            className={cn(
-                              "block min-w-0 truncate opacity-0 transition-opacity group-hover:opacity-100",
-                              heading.level <= 1 && "font-medium text-foreground/75",
-                              heading.level === 2 && "text-[13px]",
-                              heading.level >= 3 && "text-xs",
+                              "flex w-full items-center gap-1 text-sm text-foreground/70 transition-colors hover:text-foreground",
+                              active && "text-foreground",
                             )}
                           >
-                            {stripHtml(heading.text)}
-                          </span>
-                          </button>
-                        </div>
-                      </li>
-                    ))}
+                            <span
+                              className={cn(
+                                "h-1 shrink-0 rounded-full bg-foreground/30 transition-all group-hover:bg-foreground/45",
+                                heading.level <= 1 && "w-5",
+                                heading.level === 2 && "ml-3 w-4",
+                                heading.level >= 3 && "ml-6 w-3",
+                                active && "bg-foreground",
+                              )}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleTocClick(heading.index)}
+                              className="min-w-0 flex-1 text-left"
+                            >
+                            <span
+                              className={cn(
+                                "block min-w-0 truncate opacity-0 transition-opacity group-hover:opacity-100",
+                                heading.level <= 1 && "font-medium",
+                                heading.level === 2 && "text-[13px]",
+                                heading.level >= 3 && "text-xs",
+                                active && "font-semibold text-foreground opacity-100",
+                              )}
+                            >
+                              {stripHtml(heading.text)}
+                            </span>
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </div>
