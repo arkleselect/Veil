@@ -13,6 +13,7 @@ interface NoteListProps {
   selectedId: string | null
   onSelect: (id: string) => void
   onCreateNote: (parentId?: string) => void
+  onImportNotes: (files: File[]) => void | Promise<void>
   onDeleteNote: (id: string) => void
   onDeleteNotes: (ids: string[]) => void | Promise<void>
   onRenameNote: (id: string, title: string) => void | Promise<void>
@@ -53,6 +54,7 @@ export function NoteList({
   selectedId,
   onSelect,
   onCreateNote,
+  onImportNotes,
   onDeleteNote,
   onDeleteNotes,
   onRenameNote,
@@ -313,7 +315,7 @@ export function NoteList({
             </button>
           )}
         </div>
-        <CreateNoteMenu onCreateDocument={() => onCreateNote()} />
+        <CreateNoteMenu onCreateDocument={() => onCreateNote()} onImportFiles={onImportNotes} />
       </div>
 
       <div className="app-no-drag px-3 pb-1">
@@ -493,22 +495,71 @@ export function NoteList({
   )
 }
 
-function CreateNoteMenu({ onCreateDocument }: { onCreateDocument: () => void }) {
+function CreateNoteMenu({ onCreateDocument, onImportFiles }: { onCreateDocument: () => void; onImportFiles: (files: File[]) => void | Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const [suppressed, setSuppressed] = useState(false)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const visible = open && !suppressed
+  const closeAfterAction = () => {
+    setOpen(false)
+    setSuppressed(true)
+  }
+
   return (
-    <div className="group relative shrink-0">
+    <div
+      className="relative shrink-0"
+      onMouseEnter={() => {
+        if (!suppressed) setOpen(true)
+      }}
+      onMouseLeave={() => {
+        setOpen(false)
+        setSuppressed(false)
+      }}
+      onFocusCapture={() => {
+        setSuppressed(false)
+        setOpen(true)
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpen(false)
+          setSuppressed(false)
+        }
+      }}
+    >
       <button
         type="button"
         aria-label="新建"
         title="新建"
+        aria-expanded={visible}
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Plus className="h-4 w-4" />
       </button>
-      <div className="pointer-events-none absolute right-0 top-7 z-40 w-36 origin-top-right pt-2 opacity-0 translate-y-1 scale-[0.98] transition-all duration-150 ease-out group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100">
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        multiple
+        accept=".md,.markdown,.txt,.html,.htm,text/markdown,text/plain,text/html"
+        onChange={(event) => {
+          const files = Array.from(event.currentTarget.files ?? [])
+          event.currentTarget.value = ""
+          if (files.length) void onImportFiles(files)
+        }}
+      />
+      <div
+        className={cn(
+          "absolute right-0 top-7 z-40 w-36 origin-top-right pt-2 transition-all duration-150 ease-out",
+          visible ? "pointer-events-auto translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-1 scale-[0.98] opacity-0",
+        )}
+      >
         <div className="rounded-[8px] border border-border/80 bg-popover p-1.5 text-sm text-popover-foreground shadow-lg shadow-black/15">
           <button
             type="button"
-            onClick={onCreateDocument}
+            onClick={() => {
+              closeAfterAction()
+              onCreateDocument()
+            }}
             className="flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors hover:bg-accent hover:text-foreground"
           >
             <FileText className="h-4 w-4 shrink-0 text-[#3b82f6]" />
@@ -517,6 +568,10 @@ function CreateNoteMenu({ onCreateDocument }: { onCreateDocument: () => void }) 
           <div className="my-1 border-t border-border/60" />
           <button
             type="button"
+            onClick={() => {
+              closeAfterAction()
+              inputRef.current?.click()
+            }}
             className="flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors hover:bg-accent hover:text-foreground"
           >
             <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />

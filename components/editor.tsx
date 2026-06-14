@@ -3549,8 +3549,8 @@ function BlockTransformIconButton({
         onClick()
       }}
       className={cn(
-        "flex h-8 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-        active && "bg-primary/15 text-primary hover:bg-primary/15 hover:text-primary",
+        "flex h-7 items-center justify-center rounded-[5px] text-popover-foreground transition-colors hover:bg-accent",
+        active && "bg-accent text-popover-foreground",
       )}
     >
       {children}
@@ -3579,8 +3579,8 @@ function BlockTransformTextButton({
         onClick()
       }}
       className={cn(
-        "flex h-7 min-w-0 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-        active && "bg-primary/15 text-primary hover:bg-primary/15 hover:text-primary",
+        "flex h-7 min-w-0 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-popover-foreground transition-colors hover:bg-accent",
+        active && "bg-accent text-popover-foreground",
       )}
     >
       <span className="flex h-4 w-4 shrink-0 items-center justify-center">{icon}</span>

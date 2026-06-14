@@ -11,7 +11,7 @@ import { SessionManager } from "@/components/session-manager"
 import { ConfirmDialog, PromptDialog } from "@/components/dialog"
 import { useToast } from "@/components/toast-provider"
 import { useTheme } from "@/components/theme-provider"
-import type { Note, Notebook, NotesPage, TagSummary, UpdateNoteInput, WorkspaceMode } from "@/lib/notes-data"
+import type { Note, NoteBlock, Notebook, NotesPage, TagSummary, UpdateNoteInput, WorkspaceMode } from "@/lib/notes-data"
 import { ApiError, askAiAssistant, getNote, getNotesPage, getNotebooks, getFavorites, getTrashNotes, getTagSummaries, updateNote, createNote, reorderNotes, deleteNote, restoreNote, emptyTrash, createNotebook, updateNotebook, deleteNotebook, logout, type AiAssistantContextNote } from "@/lib/api"
 import { notebookShareUrl, shareOrCopyLink } from "@/lib/share"
 import { cn } from "@/lib/utils"
@@ -290,6 +290,191 @@ function conflictCopyInput(note: Note, attempted: Partial<Note>): Parameters<typ
     notebookIcon: attempted.notebookIcon ?? note.notebookIcon,
     tags: attempted.tags ?? note.tags,
     blocks: attempted.blocks ?? note.blocks,
+  }
+}
+
+interface ImportedNoteDraft {
+  title: string
+  blocks: NoteBlock[]
+}
+
+function importedTitleFromFileName(name: string): string {
+  return name.replace(/\.[^.]+$/, "").trim() || "导入的笔记"
+}
+
+function escapeImportedHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function safeImportedImageSrc(value: string): string | null {
+  const src = value.trim()
+  if (!src || /[\u0000-\u001f\u007f<>"']/u.test(src)) return null
+  if (src.startsWith("/") && !src.startsWith("//")) return src
+  try {
+    const url = new URL(src)
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null
+  } catch {
+    return null
+  }
+}
+
+function importedMarkdownInlineToHtml(value: string): string {
+  const imagePattern = /!\[([^\]\n]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
+  let result = ""
+  let lastIndex = 0
+  for (const match of value.matchAll(imagePattern)) {
+    const index = match.index ?? 0
+    result += escapeImportedHtml(value.slice(lastIndex, index))
+    const src = safeImportedImageSrc(match[2])
+    result += src
+      ? `<img src="${escapeImportedHtml(src)}" alt="${escapeImportedHtml(match[1])}" loading="lazy" class="max-w-full rounded-[8px]">`
+      : escapeImportedHtml(match[0])
+    lastIndex = index + match[0].length
+  }
+  return result + escapeImportedHtml(value.slice(lastIndex))
+}
+
+function parseImportedFrontmatter(body: string): { title?: string; body: string } {
+  const match = body.match(/^---\n([\s\S]*?)\n---\n?/)
+  if (!match) return { body }
+  const titleLine = match[1].split("\n").find((line) => line.startsWith("title: "))
+  const title = titleLine?.slice(7).trim().replace(/^"|"$/g, "")
+  return { title: title || undefined, body: body.slice(match[0].length) }
+}
+
+function markdownToImportedBlocks(value: string): NoteBlock[] {
+  const blocks: NoteBlock[] = []
+  const lines = value.replace(/\r\n?/g, "\n").split("\n")
+  const paragraph: string[] = []
+  const flushParagraph = () => {
+    const text = paragraph.join("\n").trim()
+    if (text) blocks.push({ type: "paragraph", text: importedMarkdownInlineToHtml(text).replace(/\n/g, "<br>") })
+    paragraph.length = 0
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const raw = lines[index]
+    const trimmed = raw.trim()
+    if (!trimmed) {
+      flushParagraph()
+      continue
+    }
+
+    const codeFence = trimmed.match(/^```/)
+    if (codeFence) {
+      flushParagraph()
+      const codeLines: string[] = []
+      index += 1
+      while (index < lines.length && !lines[index].trim().startsWith("```")) {
+        codeLines.push(lines[index])
+        index += 1
+      }
+      blocks.push({ type: "code", text: escapeImportedHtml(codeLines.join("\n")) })
+      continue
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/)
+    if (heading) {
+      flushParagraph()
+      blocks.push({ type: "heading", level: heading[1].length as 1 | 2 | 3, text: importedMarkdownInlineToHtml(heading[2]) })
+      continue
+    }
+
+    const todo = trimmed.match(/^[-*+]\s+\[([ xX])\]\s+(.+)$/)
+    if (todo) {
+      flushParagraph()
+      blocks.push({ type: "todo", checked: todo[1].toLowerCase() === "x", text: importedMarkdownInlineToHtml(todo[2]) })
+      continue
+    }
+
+    const bullet = trimmed.match(/^[-*+]\s+(.+)$/)
+    if (bullet) {
+      flushParagraph()
+      blocks.push({ type: "bullet", text: importedMarkdownInlineToHtml(bullet[1]) })
+      continue
+    }
+
+    const ordered = trimmed.match(/^\d+[.)]\s+(.+)$/)
+    if (ordered) {
+      flushParagraph()
+      blocks.push({ type: "ordered", text: importedMarkdownInlineToHtml(ordered[1]) })
+      continue
+    }
+
+    if (trimmed.startsWith("> ")) {
+      flushParagraph()
+      blocks.push({ type: "quote", text: importedMarkdownInlineToHtml(trimmed.slice(2)) })
+      continue
+    }
+
+    paragraph.push(raw)
+  }
+
+  flushParagraph()
+  return blocks.length ? blocks : [{ type: "paragraph", text: "" }]
+}
+
+function htmlToImportedDraft(value: string, fallbackTitle: string): ImportedNoteDraft {
+  if (typeof DOMParser === "undefined") return { title: fallbackTitle, blocks: markdownToImportedBlocks(value) }
+  const doc = new DOMParser().parseFromString(value, "text/html")
+  doc.querySelectorAll("script, style, meta, link, iframe, object, embed").forEach((node) => node.remove())
+  const title = doc.querySelector("h1")?.textContent?.trim() || doc.querySelector("title")?.textContent?.trim() || fallbackTitle
+  const blocks: NoteBlock[] = []
+  const appendElement = (element: Element) => {
+    const tag = element.tagName.toLowerCase()
+    if (tag === "img") {
+      const src = safeImportedImageSrc(element.getAttribute("src") || "")
+      if (src) blocks.push({ type: "paragraph", text: `<img src="${escapeImportedHtml(src)}" alt="${escapeImportedHtml(element.getAttribute("alt") || "")}" loading="lazy" class="max-w-full rounded-[8px]">` })
+      return
+    }
+    if (tag === "h1" || tag === "h2" || tag === "h3") {
+      blocks.push({ type: "heading", level: Number(tag.slice(1)) as 1 | 2 | 3, text: element.innerHTML.trim() || escapeImportedHtml(element.textContent || "") })
+      return
+    }
+    if (tag === "li") {
+      blocks.push({ type: "bullet", text: element.innerHTML.trim() || escapeImportedHtml(element.textContent || "") })
+      return
+    }
+    if (tag === "blockquote") {
+      blocks.push({ type: "quote", text: element.innerHTML.trim() || escapeImportedHtml(element.textContent || "") })
+      return
+    }
+    if (tag === "pre") {
+      blocks.push({ type: "code", text: escapeImportedHtml(element.textContent || "") })
+      return
+    }
+    if (["p", "div", "section", "article"].includes(tag)) {
+      const hasBlockChild = Array.from(element.children).some((child) => ["p", "div", "section", "article", "h1", "h2", "h3", "li", "blockquote", "pre", "img"].includes(child.tagName.toLowerCase()))
+      if (!hasBlockChild && element.textContent?.trim()) {
+        blocks.push({ type: "paragraph", text: element.innerHTML.trim() || escapeImportedHtml(element.textContent || "") })
+        return
+      }
+    }
+    element.childNodes.forEach((child) => {
+      if (child instanceof Element) appendElement(child)
+    })
+  }
+
+  Array.from(doc.body.children).forEach(appendElement)
+  return { title, blocks: blocks.length ? blocks : markdownToImportedBlocks(doc.body.textContent || "") }
+}
+
+async function importedNoteDraftFromFile(file: File): Promise<ImportedNoteDraft> {
+  const fallbackTitle = importedTitleFromFileName(file.name)
+  const text = await file.text()
+  const extension = file.name.split(".").pop()?.toLowerCase()
+  if (extension === "html" || extension === "htm" || file.type === "text/html") {
+    return htmlToImportedDraft(text, fallbackTitle)
+  }
+  const parsed = parseImportedFrontmatter(text.replace(/\r\n?/g, "\n"))
+  return {
+    title: parsed.title || fallbackTitle,
+    blocks: markdownToImportedBlocks(parsed.body),
   }
 }
 
@@ -875,6 +1060,44 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
     }
   }, [activeNotebook, activeNotesQuery, notebooks, toast])
 
+  const handleImportNotes = useCallback(async (files: File[]) => {
+    if (!files.length) return
+    try {
+      const imported: Note[] = []
+      for (const file of files) {
+        const draft = await importedNoteDraftFromFile(file)
+        const note = await createNote({
+          title: draft.title.trim().slice(0, 200) || "导入的笔记",
+          blocks: draft.blocks,
+          ...(activeNotebook ? {
+            notebook: activeNotebook.name,
+            notebookIcon: activeNotebook.icon,
+          } : {}),
+        })
+        imported.push(note)
+      }
+
+      setNotes((prev) => {
+        const next = mergeNoteCache(imported, prev)
+        notesRef.current = next
+        return next
+      })
+      setNotebooks((prev) => prev.map((item) => {
+        const count = imported.filter((note) => note.notebook === item.name).length
+        return count ? { ...item, count: item.count + count } : item
+      }))
+      const visibleImportedIds = imported
+        .filter((note) => noteMatchesListQuery(note, activeNotesQuery, notebooks))
+        .map((note) => note.id)
+      if (visibleImportedIds.length) setNoteIds((prev) => appendUniqueIds(visibleImportedIds, prev))
+      setSelectedId(imported[0]?.id ?? null)
+      setTitleNoteId(imported[0]?.id ?? null)
+      toast(imported.length === 1 ? "已导入笔记" : `已导入 ${imported.length} 篇笔记`, "success")
+    } catch {
+      toast("导入笔记失败", "error")
+    }
+  }, [activeNotebook, activeNotesQuery, notebooks, toast])
+
   const handleDeleteNote = useCallback(async (id: string) => {
     const current = notesRef.current.find((n) => n.id === id)
     if (!current) {
@@ -1224,6 +1447,7 @@ export function Workspace({ mode, onSwitchMode }: WorkspaceProps) {
               selectedId={selectedId}
               onSelect={handleSelectNote}
               onCreateNote={handleCreateNote}
+              onImportNotes={handleImportNotes}
               onDeleteNote={handleDeleteNote}
               onDeleteNotes={handleDeleteNotes}
               onRenameNote={handleRenameNote}
