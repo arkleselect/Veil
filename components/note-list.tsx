@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
-import { Search, X, List, LayoutGrid, Plus, Star, Trash2, MoreHorizontal, Copy, ChevronDown, ChevronRight, Home, Check, LocateFixed, Pencil } from "lucide-react"
+import { Search, X, List, LayoutGrid, Plus, Star, Trash2, MoreHorizontal, Copy, ChevronDown, ChevronRight, Home, Check, LocateFixed, Pencil, FileText, Upload } from "lucide-react"
 import type { Note } from "@/lib/notes-data"
 import { cn } from "@/lib/utils"
 import { PromptDialog } from "@/components/dialog"
@@ -313,9 +313,7 @@ export function NoteList({
             </button>
           )}
         </div>
-        <ToolButton label="新建笔记" onClick={onCreateNote}>
-          <Plus className="h-4 w-4" />
-        </ToolButton>
+        <CreateNoteMenu onCreateDocument={() => onCreateNote()} />
       </div>
 
       <div className="app-no-drag px-3 pb-1">
@@ -492,6 +490,41 @@ export function NoteList({
       />
 
     </section>
+  )
+}
+
+function CreateNoteMenu({ onCreateDocument }: { onCreateDocument: () => void }) {
+  return (
+    <div className="group relative shrink-0">
+      <button
+        type="button"
+        aria-label="新建"
+        title="新建"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+      <div className="pointer-events-none absolute right-0 top-7 z-40 w-36 origin-top-right pt-2 opacity-0 translate-y-1 scale-[0.98] transition-all duration-150 ease-out group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100">
+        <div className="rounded-[8px] border border-border/80 bg-popover p-1.5 text-sm text-popover-foreground shadow-lg shadow-black/15">
+          <button
+            type="button"
+            onClick={onCreateDocument}
+            className="flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <FileText className="h-4 w-4 shrink-0 text-[#3b82f6]" />
+            <span className="min-w-0 flex-1 truncate">文档</span>
+          </button>
+          <div className="my-1 border-t border-border/60" />
+          <button
+            type="button"
+            className="flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-left transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">导入...</span>
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -892,19 +925,3 @@ function NoteMenu({ onCopyTitle, onRename, onDelete, deleteLabel = "删除" }: {
   )
 }
 
-function ToolButton({ children, label, active, onClick }: { children: React.ReactNode; label?: string; active?: boolean; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={cn(
-        "flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-border transition-colors hover:bg-accent hover:text-foreground",
-        active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
-      )}
-    >
-      {children}
-    </button>
-  )
-}
